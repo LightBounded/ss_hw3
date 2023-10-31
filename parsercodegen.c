@@ -13,6 +13,7 @@
 #define MAX_IDENTIFIER_LENGTH 11
 #define MAX_NUMBER_LENGTH 5
 #define MAX_BUFFER_LENGTH 1000
+#define MAX_SYMBOL_TABLE_SIZE 500
 
 FILE *input_file;
 FILE *output_file;
@@ -70,6 +71,18 @@ typedef struct
 } list;
 
 list *token_list; // Global pointer to list that holds all tokens
+
+typedef struct
+{
+    int kind;      // const = 1, var = 2, proc = 3
+    char name[10]; // name up to 11 chars
+    int val;       // number (ASCII value)
+    int level;     // L level
+    int addr;      // M address
+    int mark       // to indicate unavailable or deleted
+} symbol;
+
+symbol symbol_table[MAX_SYMBOL_TABLE_SIZE]; // Global symbol table
 
 // Peek at the next character from the input file without consuming it
 char peekc()
@@ -286,6 +299,313 @@ void print_tokens(list *l)
     if (counter < l->size - 1)
     {
         print_both("\n");
+    }
+}
+
+// Parser/Codegen
+
+token current_token;
+char *name;
+
+void get_token()
+{
+    current_token = token_list->tokens[0];
+    for (int i = 0; i < token_list->size - 1; i++)
+    {
+        token_list->tokens[i] = token_list->tokens[i + 1];
+    }
+    token_list->size--;
+}
+
+void emit(int op, int l, int m, int n)
+{
+}
+
+void error(int error_code)
+{
+    switch (error_code)
+    {
+    case 1:
+        print_both("program must end with a period\n");
+        break;
+    case 2:
+        print_both("const, var, and read keywords must be followed by identifier\n");
+        break;
+    case 3:
+        print_both("symbol name has already been declared\n");
+        break;
+    case 4:
+        print_both("constants must be assigned with =\n");
+        break;
+    case 5:
+        print_both("constants must be assigned an integer value\n");
+        break;
+    case 6:
+        print_both("constant and variables declarations must be followed by a semicolon\n");
+        break;
+    case 7:
+        print_both("undeclared identifier\n");
+        break;
+    case 8:
+        print_both("only variable values may be altered\n");
+        break;
+    case 9:
+        print_both("assignment statements must use :=\n");
+        break;
+    case 10:
+        print_both("begin must be followed by end\n");
+        break;
+    }
+    // TODO: finish
+}
+
+int check_symbol_table(char *string)
+{
+    int i;
+    for (i = 0; i < MAX_SYMBOL_TABLE_SIZE; i++)
+    {
+        if (strcmp(string, symbol_table[i].name) == 0)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void program()
+{
+    get_token();
+    block();
+    if (atoi(current_token.value) != periodsym)
+    {
+        error(9);
+    }
+}
+
+void block()
+{
+    const_declaration();
+    int num_vars = var_declaration();
+    emit(6, 0, 0, num_vars); // INC 0 0 num_vars
+    statement();
+}
+
+void const_declaration()
+{
+    get_token();
+    if (atoi(current_token.value) == constsym)
+    {
+        do
+        {
+            get_token();
+            if (atoi(current_token.value) != identsym)
+            {
+                error(4);
+            }
+            if (check_symbol_table(current_token.lexeme))
+            {
+                error(23);
+            }
+            strcpy(name, current_token.lexeme);
+
+            get_token();
+            if (atoi(current_token.lexeme) != eqsym)
+            {
+                error(3);
+            }
+            get_token();
+            if (atoi(current_token.lexeme) != numbersym)
+            {
+                error(2);
+            }
+            get_token();
+        } while (atoi(current_token.lexeme) == commasym);
+        if (atoi(current_token.lexeme) != semicolonsym)
+        {
+            error(5);
+        }
+        get_token();
+    }
+}
+
+int var_declaration()
+{
+    int num_vars = 0;
+    if (atoi(current_token.lexeme) == varsym)
+    {
+        do
+        {
+            get_token();
+            if (atoi(current_token.lexeme) != identsym)
+            {
+                error(4);
+            }
+            if (check_symbol_table(current_token.lexeme))
+            {
+                error(23);
+            }
+            strcpy(name, current_token.lexeme);
+            num_vars++;
+            get_token();
+        } while (atoi(current_token.lexeme) == commasym);
+        if (atoi(current_token.lexeme) != semicolonsym)
+        {
+            error(5);
+        }
+        get_token();
+    }
+    return num_vars;
+}
+
+void statement()
+{
+    if (atoi(current_token.lexeme) == identsym)
+    {
+        get_token();
+        if (atoi(current_token.lexeme) != becomessym)
+        {
+            error(1);
+        }
+        get_token();
+        expression();
+    }
+    else if (atoi(current_token.lexeme) == callsym)
+    {
+        get_token();
+        if (atoi(current_token.lexeme) != identsym)
+        {
+            error(14);
+        }
+        get_token();
+    }
+    else if (atoi(current_token.lexeme) == beginsym)
+    {
+        get_token();
+        statement();
+        while (atoi(current_token.lexeme) == semicolonsym)
+        {
+            get_token();
+            statement();
+        }
+        if (atoi(current_token.lexeme) != endsym)
+        {
+            error(10);
+        }
+        get_token();
+    }
+    else if (atoi(current_token.lexeme) == ifsym)
+    {
+        get_token();
+        condition();
+        if (atoi(current_token.lexeme) != thensym)
+        {
+            error(16);
+        }
+        get_token();
+        statement();
+        if (atoi(current_token.lexeme) == elsesym)
+        {
+            get_token();
+            statement();
+        }
+    }
+    else if (atoi(current_token.lexeme) == whilesym)
+    {
+        get_token();
+        condition();
+        if (atoi(current_token.lexeme) != dosym)
+        {
+            error(18);
+        }
+        get_token();
+        statement();
+    }
+    else if (atoi(current_token.lexeme) == readsym)
+    {
+        get_token();
+        if (atoi(current_token.lexeme) != identsym)
+        {
+            error(4);
+        }
+        get_token();
+    }
+    else if (atoi(current_token.lexeme) == writesym)
+    {
+        get_token();
+        expression();
+    }
+}
+
+void condition()
+{
+    if (atoi(current_token.lexeme) == oddsym)
+    {
+        get_token();
+        expression();
+    }
+    else
+    {
+        expression();
+        if (atoi(current_token.lexeme) != eqsym && atoi(current_token.lexeme) != neqsym && atoi(current_token.lexeme) != lessym && atoi(current_token.lexeme) != leqsym && atoi(current_token.lexeme) != gtrsym && atoi(current_token.lexeme) != geqsym)
+        {
+            error(20);
+        }
+        get_token();
+        expression();
+    }
+}
+
+void expression()
+{
+    if (atoi(current_token.lexeme) == plussym || atoi(current_token.lexeme) == minussym)
+    {
+        get_token();
+        term();
+    }
+    else
+    {
+        term();
+    }
+    while (atoi(current_token.lexeme) == plussym || atoi(current_token.lexeme) == minussym)
+    {
+        get_token();
+        term();
+    }
+}
+
+void term()
+{
+    factor();
+    while (atoi(current_token.lexeme) == multsym || atoi(current_token.lexeme) == slashsym)
+    {
+        get_token();
+        factor();
+    }
+}
+
+void factor()
+{
+    if (atoi(current_token.lexeme) == identsym)
+    {
+        get_token();
+    }
+    else if (atoi(current_token.lexeme) == numbersym)
+    {
+        get_token();
+    }
+    else if (atoi(current_token.lexeme) == lparentsym)
+    {
+        get_token();
+        expression();
+        if (atoi(current_token.lexeme) != rparentsym)
+        {
+            error(22);
+        }
+        get_token();
+    }
+    else
+    {
+        error(24);
     }
 }
 
@@ -517,6 +837,8 @@ int main(int argc, char *argv[])
                 buffer_index = 0;
             }
         }
+
+        // Code generation
     }
 
     print_both("\n");
@@ -524,6 +846,10 @@ int main(int argc, char *argv[])
     print_tokens(token_list); // Print tokens to console and output file
     printf("\n");
     destroy_list(token_list); // Free memory used by token list
+    fclose(input_file);       // Close input file
+    fclose(output_file);      // Close output file
 
+    // Read in tokens in the tokens list and generate code
+    program();
     return 0;
 }
