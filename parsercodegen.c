@@ -608,7 +608,6 @@ void get_next_token()
     token_list->tokens[i] = token_list->tokens[i + 1];
   }
   token_list->size--;
-  printf("current token: %s\n", current_token.lexeme);
 }
 
 void emit(int op, int l, int m)
@@ -629,6 +628,7 @@ void emit(int op, int l, int m)
 
 void error(int error_code)
 {
+  printf("Error: ");
   switch (error_code)
   {
   case 1:
@@ -650,7 +650,7 @@ void error(int error_code)
     print_both("constant and variables declarations must be followed by a semicolon\n");
     break;
   case 7:
-    print_both("undeclared identifier\n");
+    print_both("undeclared identifier %s\n", current_token.lexeme);
     break;
   case 8:
     print_both("only variable values may be altered\n");
@@ -792,7 +792,6 @@ void statement()
 {
   if (atoi(current_token.value) == identsym)
   {
-    printf("current token here!!!: %s\n", current_token.lexeme);
     int sx = check_symbol_table(current_token.lexeme);
     if (sx == -1)
     {
@@ -803,7 +802,6 @@ void statement()
       error(8);
     }
     get_next_token();
-    printf("current token here!!!: %s\n", current_token.lexeme);
     if (atoi(current_token.value) != becomessym)
     {
       error(9);
@@ -955,7 +953,6 @@ void expression()
 void term()
 {
   factor();
-  printf("current token here!!!: %s\n", current_token.lexeme);
   while (atoi(current_token.value) == multsym || atoi(current_token.value) == slashsym)
   {
     if (atoi(current_token.value) == multsym)
