@@ -603,12 +603,12 @@ token current_token;
 void get_next_token()
 {
   current_token = token_list->tokens[0];
-  printf("%s ", current_token.lexeme);
   for (int i = 0; i < token_list->size - 1; i++)
   {
     token_list->tokens[i] = token_list->tokens[i + 1];
   }
   token_list->size--;
+  printf("current token: %s\n", current_token.lexeme);
 }
 
 void emit(int op, int l, int m)
@@ -678,7 +678,7 @@ void error(int error_code)
     break;
   }
 
-  // exit(0);
+  exit(0);
 }
 
 int check_symbol_table(char *string)
@@ -719,7 +719,7 @@ void block()
 {
   const_declaration();
   int num_vars = var_declaration();
-  emit(6, 0, 3 + num_vars); // INC 0 0 num_vars
+  emit(6, 0, 3 + num_vars);
   statement();
 }
 
@@ -738,9 +738,6 @@ void const_declaration()
       {
         error(3);
       }
-      {
-        error(3);
-      }
       get_next_token();
       if (atoi(current_token.value) != eqsym)
       {
@@ -751,6 +748,7 @@ void const_declaration()
       {
         error(5);
       }
+      add_symbol(1, current_token.lexeme, atoi(current_token.lexeme), level, 0);
       get_next_token();
     } while (atoi(current_token.value) == commasym);
     if (atoi(current_token.value) != semicolonsym)
@@ -778,7 +776,7 @@ int var_declaration()
       {
         error(3);
       }
-      add_symbol(2, current_token.lexeme, 0, level, num_vars + 2);
+      add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2);
       get_next_token();
     } while (atoi(current_token.value) == commasym);
     if (atoi(current_token.value) != semicolonsym)
@@ -794,6 +792,7 @@ void statement()
 {
   if (atoi(current_token.value) == identsym)
   {
+    printf("current token here!!!: %s\n", current_token.lexeme);
     int sx = check_symbol_table(current_token.lexeme);
     if (sx == -1)
     {
@@ -804,6 +803,7 @@ void statement()
       error(8);
     }
     get_next_token();
+    printf("current token here!!!: %s\n", current_token.lexeme);
     if (atoi(current_token.value) != becomessym)
     {
       error(9);
@@ -853,6 +853,7 @@ void statement()
     emit(8, 0, 0);
     statement();
     emit(7, 0, lx);
+    code[jx].m = cx;
   }
   else if (atoi(current_token.value) == readsym)
   {
@@ -884,7 +885,7 @@ void statement()
 
 void condition()
 {
-  if (atoi(current_token.lexeme) == oddsym)
+  if (atoi(current_token.value) == oddsym)
   {
     get_next_token();
     expression();
@@ -893,7 +894,7 @@ void condition()
   else
   {
     expression();
-    switch (atoi(current_token.lexeme))
+    switch (atoi(current_token.value))
     {
     case eqsym:
       get_next_token();
@@ -932,20 +933,21 @@ void condition()
   }
 }
 
+// expression ::=  term { ("+"|"-") term}.
 void expression()
 {
   term();
-  while (atoi(current_token.lexeme) == plussym || atoi(current_token.lexeme) == minussym)
+  while (atoi(current_token.value) == plussym || atoi(current_token.value) == minussym)
   {
     get_next_token();
     term();
-    if (atoi(current_token.lexeme) == plussym)
+    if (atoi(current_token.value) == plussym)
     {
-      emit(2, 0, 2);
+      emit(2, 0, 1);
     }
     else
     {
-      emit(2, 0, 3);
+      emit(2, 0, 2);
     }
   }
 }
@@ -953,17 +955,20 @@ void expression()
 void term()
 {
   factor();
-  while (atoi(current_token.lexeme) == multsym || atoi(current_token.lexeme) == slashsym)
+  printf("current token here!!!: %s\n", current_token.lexeme);
+  while (atoi(current_token.value) == multsym || atoi(current_token.value) == slashsym)
   {
-    get_next_token();
-    factor();
-    if (atoi(current_token.lexeme) == multsym)
+    if (atoi(current_token.value) == multsym)
     {
-      emit(2, 0, 4);
+      get_next_token();
+      factor();
+      emit(2, 0, 3);
     }
     else
     {
-      emit(2, 0, 5);
+      get_next_token();
+      factor();
+      emit(2, 0, 4);
     }
   }
 }
