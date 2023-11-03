@@ -607,8 +607,7 @@ void emit(int op, int l, int m)
 {
   if (cx > MAX_INSTRUCTION_LENGTH)
   {
-    print_both("Error: Program is too long\n");
-    exit(0);
+    error(16);
   }
   else
   {
@@ -669,8 +668,9 @@ void error(int error_code)
   case 15:
     print_both("arithmetic equations must contain operands, parenthesis, numbers, or symbols\n");
     break;
+  case 16:
+    print_both("program too long\n");
   }
-
   exit(0);
 }
 
