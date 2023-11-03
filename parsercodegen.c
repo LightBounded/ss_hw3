@@ -592,7 +592,9 @@ void print_tokens(list *l)
 }
 
 // Parser/Codegen stuff
-token current_token;
+token current_token; // Keep track of current token
+
+// Get next token from token list
 void get_next_token()
 {
   current_token = token_list->tokens[0];
@@ -603,6 +605,7 @@ void get_next_token()
   token_list->size--;
 }
 
+// Emit an instruction to the code array
 void emit(int op, int l, int m)
 {
   if (cx > MAX_INSTRUCTION_LENGTH)
@@ -618,6 +621,7 @@ void emit(int op, int l, int m)
   }
 }
 
+// Print an error message and exit
 void error(int error_code)
 {
   print_both("Error: ");
@@ -674,6 +678,7 @@ void error(int error_code)
   exit(0);
 }
 
+// Check if a symbol is in the symbol table
 int check_symbol_table(char *string)
 {
   int i;
@@ -687,6 +692,7 @@ int check_symbol_table(char *string)
   return -1;
 }
 
+// Add a symbol to the symbol table
 void add_symbol(int kind, char *name, int val, int level, int addr)
 {
   symbol_table[tx].kind = kind;
@@ -697,314 +703,324 @@ void add_symbol(int kind, char *name, int val, int level, int addr)
   tx++;
 }
 
+// Parse the program
 void program()
 {
-  get_next_token();
-  block();
-  if (atoi(current_token.value) != periodsym)
+  get_next_token();                           // Get first token
+  block();                                    // Parse block
+  if (atoi(current_token.value) != periodsym) // Check if program ends with a period
   {
-    error(1);
+    error(1); // Error if it doesn't
   }
-  emit(9, 0, 3);
+  emit(9, 0, 3); // Emit halt instruction
 }
 
 void block()
 {
-  const_declaration();
-  int num_vars = var_declaration();
-  emit(6, 0, 3 + num_vars);
-  statement();
+  const_declaration();              // Parse constants
+  int num_vars = var_declaration(); // Parse variables
+  emit(6, 0, 3 + num_vars);         // Emit INC instruction
+  statement();                      // Parse statement
 }
 
+// Parse constants
 void const_declaration()
 {
-  char name[MAX_IDENTIFIER_LENGTH + 1];
+  char name[MAX_IDENTIFIER_LENGTH + 1]; // Track name of constant
+  // Check if current token is a const
   if (atoi(current_token.value) == constsym)
   {
     do
     {
       get_next_token();
-      if (atoi(current_token.value) != identsym)
+      if (atoi(current_token.value) != identsym) // Check if next token is an identifier
       {
-        error(2);
+        error(2); // Error if it isn't
       }
-      strcpy(name, current_token.lexeme);
-      if (check_symbol_table(current_token.lexeme) != -1)
+      strcpy(name, current_token.lexeme);                 // Save name of constant
+      if (check_symbol_table(current_token.lexeme) != -1) // Check if constant has already been declared
       {
-        error(3);
-      }
-      get_next_token();
-      if (atoi(current_token.value) != eqsym)
-      {
-        error(4);
+        error(3); // Error if it has
       }
       get_next_token();
-      if (atoi(current_token.value) != numbersym)
+      if (atoi(current_token.value) != eqsym) // Check if next token is an equals sign
       {
-        error(5);
+        error(4); // Error if it isn't
       }
-      add_symbol(1, name, atoi(current_token.lexeme), level, 0);
       get_next_token();
-    } while (atoi(current_token.value) == commasym);
-    if (atoi(current_token.value) != semicolonsym)
+      if (atoi(current_token.value) != numbersym) // Check if next token is a number
+      {
+        error(5); // Error if it isn't
+      }
+      add_symbol(1, name, atoi(current_token.lexeme), level, 0); // Add constant to symbol table
+      get_next_token();
+    } while (atoi(current_token.value) == commasym); // Continue parsing constants if next token is a comma
+    if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
     {
-      error(6);
+      error(6); // Error if it isn't
     }
     get_next_token();
   }
 }
 
+// Parse variables
 int var_declaration()
 {
-  int num_vars = 0;
-  if (atoi(current_token.value) == varsym)
+  int num_vars = 0;                        // Track number of variables
+  if (atoi(current_token.value) == varsym) // Check if current token is a var
   {
     do
     {
-      num_vars++;
+      num_vars++; // Increment number of variables
       get_next_token();
-      if (atoi(current_token.value) != identsym)
+      if (atoi(current_token.value) != identsym) // Check if next token is an identifier
       {
         error(2);
       }
-      if (check_symbol_table(current_token.lexeme) != -1)
+      if (check_symbol_table(current_token.lexeme) != -1) // Check if variable has already been declared
       {
-        error(3);
+        error(3); // Error if it has
       }
-      add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2);
+      add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2); // Add variable to symbol table
       get_next_token();
-    } while (atoi(current_token.value) == commasym);
-    if (atoi(current_token.value) != semicolonsym)
+    } while (atoi(current_token.value) == commasym); // Continue parsing variables if next token is a comma
+    if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
     {
-      error(6);
+      error(6); // Error if it isn't
     }
     get_next_token();
   }
-  return num_vars;
+  return num_vars; // Return number of variables
 }
 
+// Parse statements
 void statement()
 {
-  if (atoi(current_token.value) == identsym)
+  if (atoi(current_token.value) == identsym) // Check if current token is an identifier
   {
-    int sx = check_symbol_table(current_token.lexeme);
+    int sx = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
     if (sx == -1)
     {
-      error(7);
+      error(7); // Error if it isn't
     }
-    if (symbol_table[sx].kind != 2)
+    if (symbol_table[sx].kind != 2) // Check if identifier is a variable
     {
-      error(8);
+      error(8); // Error if it isn't
     }
     get_next_token();
-    if (atoi(current_token.value) != becomessym)
+    if (atoi(current_token.value) != becomessym) // Check if next token is a becomes symbol (:=)
     {
-      error(9);
+      error(9); // Error if it isn't
     }
     get_next_token();
-    expression();
-    emit(4, 0, symbol_table[sx].addr);
+    expression();                      // Parse expression
+    emit(4, 0, symbol_table[sx].addr); // Emit STO instruction
   }
-  else if (atoi(current_token.value) == beginsym)
+  else if (atoi(current_token.value) == beginsym) // Check if current token is a begin
   {
     do
     {
       get_next_token();
-      statement();
-    } while (atoi(current_token.value) == semicolonsym);
-    if (atoi(current_token.value) != endsym)
+      statement();                                       // Parse statement
+    } while (atoi(current_token.value) == semicolonsym); // Continue parsing statements if next token is a semicolon
+    if (atoi(current_token.value) != endsym)             // Check if next token is an end
     {
-      error(10);
+      error(10); // Error if it isn't
     }
     get_next_token();
   }
-  else if (atoi(current_token.value) == ifsym)
+  else if (atoi(current_token.value) == ifsym) // Check if current token is an if
   {
-    printf("if\n");
     get_next_token();
-    condition();
-    int jx = cx;
-    emit(8, 0, 0);
-    if (atoi(current_token.value) != thensym)
+    condition();                              // Parse condition
+    int jx = cx;                              // Save current code index to jump to
+    emit(8, 0, 0);                            // Emit JPC instruction
+    if (atoi(current_token.value) != thensym) // Check if next token is a then
     {
-      error(11);
+      error(11); // Error if it isn't
     }
     get_next_token();
-    statement();
-    code[jx].m = cx;
+    statement();     // Parse statement
+    code[jx].m = cx; // Set JPC instruction's M to current code index
   }
-  else if (atoi(current_token.value) == whilesym)
+  else if (atoi(current_token.value) == whilesym) // Check if current token is a while
   {
     get_next_token();
     int lx = cx;
-    condition();
-    if (atoi(current_token.value) != dosym)
+    condition();                            // Parse condition
+    if (atoi(current_token.value) != dosym) // Check if next token is a do
     {
-      error(12);
+      error(12); // Error if it isn't
     }
     get_next_token();
-    int jx = cx;
-    emit(8, 0, 0);
-    statement();
-    emit(7, 0, lx);
-    code[jx].m = cx;
+    int jx = cx;     // Save current code index to jump to
+    emit(8, 0, 0);   // Emit JPC instruction
+    statement();     // Parse statement
+    emit(7, 0, lx);  // Emit JMP instruction
+    code[jx].m = cx; // Set JPC instruction's M to current code index
   }
-  else if (atoi(current_token.value) == readsym)
+  else if (atoi(current_token.value) == readsym) // Check if current token is a read
   {
     get_next_token();
-    if (atoi(current_token.value) != identsym)
+    if (atoi(current_token.value) != identsym) // Check if current token is an identifier
     {
-      error(2);
+      error(2); // Error if it isn't
     }
-    int sx = check_symbol_table(current_token.lexeme);
+    int sx = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
     if (sx == -1)
     {
-      error(7);
+      error(7); // Error if it isn't
     }
-    if (symbol_table[sx].kind != 2)
+    if (symbol_table[sx].kind != 2) // Check if identifier is a variable
     {
-      error(8);
+      error(8); // Error if it isn't
     }
     get_next_token();
-    emit(9, 0, 2);
-    emit(4, 0, sx);
+    emit(9, 0, 2);  // Emit SIO instruction
+    emit(4, 0, sx); // Emit STO instruction
   }
-  else if (atoi(current_token.value) == writesym)
+  else if (atoi(current_token.value) == writesym) // Check if current token is a write
   {
     get_next_token();
-    expression();
-    emit(9, 0, 1);
+    expression();  // Parse expression
+    emit(9, 0, 1); // Emit SIO instruction
   }
 }
 
+// Parse condition
 void condition()
 {
-  if (atoi(current_token.value) == oddsym)
+  if (atoi(current_token.value) == oddsym) // Check if current token is odd
   {
     get_next_token();
-    expression();
-    emit(2, 0, 11);
+    expression();   // Parse expression
+    emit(2, 0, 11); // Emit ODD instruction
   }
   else
   {
-    expression();
-    switch (atoi(current_token.value))
+    expression();                      // Parse expression
+    switch (atoi(current_token.value)) // Check if current token is a comparison operator
     {
     case eqsym:
       get_next_token();
       expression();
-      emit(2, 0, 5);
+      emit(2, 0, 5); // Emit EQL instruction
       break;
     case neqsym:
       get_next_token();
       expression();
-      emit(2, 0, 6);
+      emit(2, 0, 6); // Emit NEQ instruction
       break;
     case lessym:
       get_next_token();
       expression();
-      emit(2, 0, 7);
+      emit(2, 0, 7); // Emit LSS instruction
       break;
     case leqsym:
       get_next_token();
       expression();
-      emit(2, 0, 8);
+      emit(2, 0, 8); // Emit LEQ instruction
       break;
     case gtrsym:
       get_next_token();
       expression();
-      emit(2, 0, 9);
+      emit(2, 0, 9); // Emit GTR instruction
       break;
     case geqsym:
       get_next_token();
       expression();
-      emit(2, 0, 10);
+      emit(2, 0, 10); // Emit GEQ instruction
       break;
     default:
-      error(13);
+      error(13); // Error if it isn't
       break;
     }
   }
 }
 
+// Parse expression
 void expression()
 {
-  term();
+  term(); // Parse term
+  // Check if current token is a plus or minus
   while (atoi(current_token.value) == plussym || atoi(current_token.value) == minussym)
   {
     get_next_token();
-    term();
-    if (atoi(current_token.value) == plussym)
+    term();                                   // Parse term
+    if (atoi(current_token.value) == plussym) // Check if current token is a plus
     {
-      emit(2, 0, 1);
+      emit(2, 0, 1); // Emit ADD instruction
     }
     else
     {
-      emit(2, 0, 2);
+      emit(2, 0, 2); // Emit SUB instruction
     }
   }
 }
 
+// Parse term
 void term()
 {
-  factor();
+  factor(); // Parse factor
   while (atoi(current_token.value) == multsym || atoi(current_token.value) == slashsym)
   {
-    if (atoi(current_token.value) == multsym)
+    if (atoi(current_token.value) == multsym) // Check if current token is a multiply
     {
       get_next_token();
-      factor();
-      emit(2, 0, 3);
+      factor();      // Parse factor
+      emit(2, 0, 3); // Emit MUL
     }
     else
     {
       get_next_token();
-      factor();
-      emit(2, 0, 4);
+      factor();      // Parse factor
+      emit(2, 0, 4); // Emit DIV
     }
   }
 }
 
+// Parse factor
 void factor()
 {
-  if (atoi(current_token.value) == identsym)
+  if (atoi(current_token.value) == identsym) // Check if current token is an identifier
   {
-    int sx = check_symbol_table(current_token.lexeme);
+    int sx = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
     if (sx == -1)
     {
-      error(7);
+      error(7); // Error if it isn't
     }
-    if (symbol_table[sx].kind == 1)
+    if (symbol_table[sx].kind == 1) // Check if identifier is a constant
     {
-      emit(1, 0, symbol_table[sx].val);
+      emit(1, 0, symbol_table[sx].val); // Emit LIT instruction
     }
     else
     {
-      emit(3, level - symbol_table[sx].level, symbol_table[sx].addr);
+      emit(3, level - symbol_table[sx].level, symbol_table[sx].addr); // Emit LOD instruction
     }
     get_next_token();
   }
-  else if (atoi(current_token.value) == numbersym)
+  else if (atoi(current_token.value) == numbersym) // Check if current token is a number
   {
-    emit(1, 0, atoi(current_token.lexeme));
+    emit(1, 0, atoi(current_token.lexeme)); // Emit LIT instruction
     get_next_token();
   }
-  else if (atoi(current_token.value) == lparentsym)
+  else if (atoi(current_token.value) == lparentsym) // Check if current token is a left parenthesis
   {
     get_next_token();
-    expression();
-    if (atoi(current_token.value) != rparentsym)
+    expression();                                // Parse expression
+    if (atoi(current_token.value) != rparentsym) // Check if currenet token is right parenthesis
     {
-      error(14);
+      error(14); // Error if it isn't
     }
     get_next_token();
   }
   else
   {
-    error(15);
+    error(15); // Error if current token is none of the above
   }
 }
 
+// Print symbol table
 void print_symbol_table()
 {
   print_both("Symbol Table:\n");
@@ -1015,6 +1031,7 @@ void print_symbol_table()
   }
 }
 
+// Print assmebly code
 void print_instructions()
 {
 
@@ -1028,6 +1045,7 @@ void print_instructions()
   }
 }
 
+// Get op name from op code
 void get_op_name(int op, char *name)
 {
   switch (op)
