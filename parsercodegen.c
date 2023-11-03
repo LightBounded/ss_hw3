@@ -26,7 +26,6 @@ typedef enum
   minussym,     // Represents the '-' symbol
   multsym,      // Represents the '*' symbol
   slashsym,     // Represents the '/' symbol
-  ifelsym,      // Represents a combined 'if', 'else'
   eqsym,        // Represents the '=' symbol
   neqsym,       // Represents the '<>' symbol
   lessym,       // Represents the '<' symbol
@@ -45,13 +44,10 @@ typedef enum
   thensym,      // Represents the 'then' keyword
   whilesym,     // Represents the 'while' keyword
   dosym,        // Represents the 'do' keyword
-  callsym,      // Represents the 'call' keyword
   constsym,     // Represents the 'const' keyword
   varsym,       // Represents the 'var' keyword
-  procsym,      // Represents the 'procedure' keyword
   writesym,     // Represents the 'write' keyword
   readsym,      // Represents the 'read' keyword
-  elsesym       // Represents the 'else' keyword
 } token_type;
 
 // Struct to represent token
@@ -430,10 +426,6 @@ int handle_reserved_word(char *buffer)
     return constsym;
   else if (strcmp(buffer, "var") == 0)
     return varsym;
-  else if (strcmp(buffer, "procedure") == 0)
-    return procsym;
-  else if (strcmp(buffer, "call") == 0)
-    return callsym;
   else if (strcmp(buffer, "begin") == 0)
     return beginsym;
   else if (strcmp(buffer, "end") == 0)
@@ -442,8 +434,6 @@ int handle_reserved_word(char *buffer)
     return ifsym;
   else if (strcmp(buffer, "then") == 0)
     return thensym;
-  else if (strcmp(buffer, "else") == 0)
-    return elsesym;
   else if (strcmp(buffer, "while") == 0)
     return whilesym;
   else if (strcmp(buffer, "do") == 0)
@@ -452,8 +442,6 @@ int handle_reserved_word(char *buffer)
     return readsym;
   else if (strcmp(buffer, "write") == 0)
     return writesym;
-  else if (strcmp(buffer, "ifel") == 0)
-    return ifelsym;
   return 0; // invalid reserved word
 }
 
