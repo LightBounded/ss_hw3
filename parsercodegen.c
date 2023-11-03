@@ -123,6 +123,7 @@ void term();
 void factor();
 void print_symbol_table();
 void print_instructions();
+void get_op_name(int op, char *name);
 
 int main(int argc, char *argv[])
 {
@@ -147,12 +148,12 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  print_both("Source Program:\n");
-  print_source_code();
-  print_both("\n");
-  print_both("Lexeme Table:\n");
-  print_both("\n");
-  print_both("%10s %20s\n", "lexeme", "token type");
+  // print_both("Source Program:\n");
+  // print_source_code();
+  // print_both("\n");
+  // print_both("Lexeme Table:\n");
+  // print_both("\n");
+  // print_both("%10s %20s\n", "lexeme", "token type");
 
   token_list = create_list();
 
@@ -178,12 +179,12 @@ int main(int argc, char *argv[])
           if (buffer_index > MAX_NUMBER_LENGTH)
           {
             // Number is too long
-            print_both("%10s %20s\n", buffer, "ERROR: NUMBER TOO LONG");
+            // print_both("%10s %20s\n", buffer, "ERROR: NUMBER TOO LONG");
           }
           else
           {
             // Number is valid
-            print_both("%10s %20d\n", buffer, numbersym);
+            // print_both("%10s %20d\n", buffer, numbersym);
             sprintf(t.value, "%d", numbersym);
             strcpy(t.lexeme, buffer);
             append_token(token_list, t);
@@ -206,7 +207,7 @@ int main(int argc, char *argv[])
         {
           // Invalid number
           token t;
-          print_both("%10s %20d\n", buffer, numbersym);
+          // print_both("%10s %20d\n", buffer, numbersym);
           sprintf(t.value, "%d", numbersym);
           strcpy(t.lexeme, buffer);
           append_token(token_list, t);
@@ -229,7 +230,7 @@ int main(int argc, char *argv[])
           if (token_value)
           {
             token t;
-            print_both("%10s %20d\n", buffer, token_value);
+            // print_both("%10s %20d\n", buffer, token_value);
             sprintf(t.value, "%d", token_value);
             strcpy(t.lexeme, buffer);
             append_token(token_list, t);
@@ -243,12 +244,12 @@ int main(int argc, char *argv[])
             token t;
             if (buffer_index > MAX_IDENTIFIER_LENGTH) // Check if identifier is too long
             {
-              print_both("%10s %20s\n", buffer, "ERROR: IDENTIFIER TOO LONG");
+              // print_both("%10s %20s\n", buffer, "ERROR: IDENTIFIER TOO LONG");
             }
             else
             {
               // Valid identifier
-              print_both("%10s %20d\n", buffer, identsym);
+              // print_both("%10s %20d\n", buffer, identsym);
               sprintf(t.value, "%d", identsym);
               strcpy(t.lexeme, buffer);
               append_token(token_list, t);
@@ -317,13 +318,15 @@ int main(int argc, char *argv[])
         token t;
         int token_value = handle_special_symbol(buffer);
         if (!token_value)
+        {
           // All symbols are invalid
-          for (int i = 0; i < buffer_index; i++)
-            print_both("%10c %20s\n", buffer[i], "ERROR: INVALID SYMBOL");
+          // for (int i = 0; i < buffer_index; i++)
+          //   print_both("%10c %20s\n", buffer[i], "ERROR: INVALID SYMBOL");
+        }
         else
         {
           // Both symbols make a valid symbol
-          print_both("%10s %20d\n", buffer, token_value);
+          // print_both("%10s %20d\n", buffer, token_value);
           sprintf(t.value, "%d", token_value);
           strcpy(t.lexeme, buffer);
           append_token(token_list, t);
@@ -338,10 +341,12 @@ int main(int argc, char *argv[])
         token t;
         int token_value = handle_special_symbol(buffer);
         if (!token_value)
-          print_both("%10c %20s\n", c, "ERROR: INVALID SYMBOL");
+        {
+          // print_both("%10c %20s\n", c, "ERROR: INVALID SYMBOL");
+        }
         else
         {
-          print_both("%10s %20d\n", buffer, token_value);
+          // print_both("%10s %20d\n", buffer, token_value);
           sprintf(t.value, "%d", token_value);
           strcpy(t.lexeme, buffer);
           append_token(token_list, t);
@@ -353,10 +358,10 @@ int main(int argc, char *argv[])
     }
   }
 
-  print_both("\n");
-  print_both("Token List:\n");
-  print_tokens(token_list); // Print tokens to console and output file
-  printf("\n");
+  // print_both("\n");
+  // print_both("Token List:\n");
+  // print_tokens(token_list); // Print tokens to console and output file
+  // printf("\n");
 
   // First instruction is always JMP 0 3
   code[0].op = 7;
@@ -1010,10 +1015,47 @@ void print_symbol_table()
 
 void print_instructions()
 {
-  print_both("Instructions:\n");
-  print_both("%10s %10s %10s %10s\n", "Line", "op", "l", "m");
+
+  print_both("Assembly Code:\n");
+  print_both("%10s %10s %10s %10s\n", "line", "op", "l", "m");
   for (int i = 0; i < cx; i++)
   {
-    print_both("%10d %10d %10d %10d\n", i, code[i].op, code[i].l, code[i].m);
+    char name[4];
+    get_op_name(code[i].op, name);
+    print_both("%10d %10s %10d %10d\n", i, name, code[i].l, code[i].m);
+  }
+}
+
+void get_op_name(int op, char *name)
+{
+  switch (op)
+  {
+  case 1:
+    strcpy(name, "LIT");
+    break;
+  case 2:
+    strcpy(name, "OPR");
+    break;
+  case 3:
+    strcpy(name, "LOD");
+    break;
+  case 4:
+    strcpy(name, "STO");
+    break;
+  case 5:
+    strcpy(name, "CAL");
+    break;
+  case 6:
+    strcpy(name, "INC");
+    break;
+  case 7:
+    strcpy(name, "JMP");
+    break;
+  case 8:
+    strcpy(name, "JPC");
+    break;
+  case 9:
+    strcpy(name, "SYS");
+    break;
   }
 }
