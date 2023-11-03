@@ -621,7 +621,7 @@ void emit(int op, int l, int m)
 
 void error(int error_code)
 {
-  printf("Error: ");
+  print_both("Error: ");
   switch (error_code)
   {
   case 1:
@@ -718,6 +718,7 @@ void block()
 
 void const_declaration()
 {
+  char name[MAX_IDENTIFIER_LENGTH + 1];
   if (atoi(current_token.value) == constsym)
   {
     do
@@ -727,6 +728,7 @@ void const_declaration()
       {
         error(2);
       }
+      strcpy(name, current_token.lexeme);
       if (check_symbol_table(current_token.lexeme) != -1)
       {
         error(3);
@@ -741,7 +743,7 @@ void const_declaration()
       {
         error(5);
       }
-      add_symbol(1, current_token.lexeme, atoi(current_token.lexeme), level, 0);
+      add_symbol(1, name, atoi(current_token.lexeme), level, 0);
       get_next_token();
     } while (atoi(current_token.value) == commasym);
     if (atoi(current_token.value) != semicolonsym)
@@ -763,7 +765,7 @@ int var_declaration()
       get_next_token();
       if (atoi(current_token.value) != identsym)
       {
-        error(4);
+        error(2);
       }
       if (check_symbol_table(current_token.lexeme) != -1)
       {
@@ -774,7 +776,7 @@ int var_declaration()
     } while (atoi(current_token.value) == commasym);
     if (atoi(current_token.value) != semicolonsym)
     {
-      error(5);
+      error(6);
     }
     get_next_token();
   }
@@ -818,6 +820,7 @@ void statement()
   }
   else if (atoi(current_token.value) == ifsym)
   {
+    printf("if\n");
     get_next_token();
     condition();
     int jx = cx;
@@ -924,7 +927,6 @@ void condition()
   }
 }
 
-// expression ::=  term { ("+"|"-") term}.
 void expression()
 {
   term();
