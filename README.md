@@ -1,12 +1,12 @@
-# Homework #3 (Tiny PL/0 compiler)
+**Pharit Smitasin**
+**COP3402**
+**Euripides Montagne**
+**Fall 2023**
 
-Authored by Caleb Rivera and Matthew Labrada
+The parsercodegen.c program is an implementation of a compiler for the Tiny PL/0 language which is capable of parsing, lexing, and generating code.
 
-## What is this?
-This program implements a compiler for the Tiny PL/0 language. It is capable of lexing, parsing, and generating code for Tiny PL/0 programs.
+## How to run
+`gcc parsercodegen.c`
 
-## How to run and compile
-```bash
-1. gcc parsercodegen.c
-2. ./a.out <input file> <output file>
-```
+`./a.out input.txt output.txt`
+
