@@ -1,6 +1,6 @@
 /* Pharit Smitasin
  * COP 3402 Fall 2023
- * HW2
+ * HW3
  */
 
 #include <ctype.h>
@@ -13,24 +13,20 @@
 #define ID_LEN_MAX 11
 #define NUM_LEN_MAX 5
 #define TOKEN_LEN_MAX 1000
-#define MAX_SYMBOL_TABLE_SIZE 500
-#define MAX_INSTRUCTION_LENGTH MAX_SYMBOL_TABLE_SIZE
-
-// FILE *inputFile;
-// FILE *outputFile;
+#define SYM_TABLE_MAX 500
+#define IS_LEN_MAX 500
 
 // list of enumerations for token types
-// with skipsym starting at 1, the rest of the enumerations will be assigned values incrementing by 1
+// with oddsym starting at 1, the rest of the enumerations will be assigned values incrementing by 1
 typedef enum
 {
-    skipsym = 1,  //  skip symbol
+    oddsym = 1,   //  skip symbol
     identsym,     //  identifier symbol
     numbersym,    //  number symbol
     plussym,      //  '+' symbol
     minussym,     //  '-' symbol
     multsym,      //  '*' symbol
     slashsym,     //  '/' symbol
-    ifelsym,      //  'if', 'else' keyword
     eqsym,        //  '=' symbol
     neqsym,       //  '<>' symbol
     lessym,       //  '<' symbol
@@ -49,13 +45,10 @@ typedef enum
     thensym,      //  'then' keyword
     whilesym,     //  'while' keyword
     dosym,        //  'do' keyword
-    callsym,      //  'call' keyword
     constsym,     //  'const' keyword
     varsym,       //  'var' keyword
-    procsym,      //  'procedure' keyword
     writesym,     //  'write' keyword
     readsym,      //  'read' keyword
-    elsesym       //  'else' keyword
 } token_type;
 
 // token struct
@@ -75,6 +68,34 @@ typedef struct
 
 // this is the list of tokens that will be used to store the tokens for the parser
 list *token_list;
+
+typedef struct
+{
+    int kind;      // const = 1, var = 2, proc = 3
+    char name[10]; // name up to 11 chars
+    int val;       // number (ASCII value)
+    int level;     // L level
+    int addr;      // M address
+    int mark;      // to indicate unavailable or deleted
+} symbol;
+
+typedef struct
+{
+    int op; // opcode
+    int l;  // L
+    int m;  // M
+} instruction;
+
+FILE *inputFile;
+FILE *outputFile;
+
+FILE *inputFile;
+FILE *outputFile;
+symbol symbol_table[SYM_TABLE_MAX]; // Global symbol table
+instruction code[IS_LEN_MAX];       // Global code array
+int cx = 0;                         // Code index
+int tx = 0;                         // Symbol table index
+int level = 0;                      // Current level
 
 // reads next character from input file
 char peekc()
@@ -130,22 +151,29 @@ void cutString(char *string, int cutoff)
 
 // checks if the given string is a reserved word and returns its token value
 // in = reserved word, out = token value
-int reservedToToken(char *buffer)
+int handle_reserved_word(char *buffer)
 {
-    char *reserved_words[] = {"const", "var", "procedure", "call", "begin", "end", "if", "then", "else", "while", "do", "read", "write", "ifel"};
-    int reserved_word_values[] = {constsym, varsym, procsym, callsym, beginsym, endsym, ifsym, thensym, elsesym, whilesym, dosym, readsym, writesym, ifelsym};
-    int num_reserved_words = sizeof(reserved_words) / sizeof(reserved_words[0]);
-
-    // loop through reserved words and check if buffer matches any of them
-    for (int i = 0; i < num_reserved_words; i++)
-    {
-        if (strcmp(buffer, reserved_words[i]) == 0)
-        {
-            return reserved_word_values[i];
-        }
-    }
-
-    return 0; // invalid word
+    if (strcmp(buffer, "const") == 0)
+        return constsym;
+    else if (strcmp(buffer, "var") == 0)
+        return varsym;
+    else if (strcmp(buffer, "begin") == 0)
+        return beginsym;
+    else if (strcmp(buffer, "end") == 0)
+        return endsym;
+    else if (strcmp(buffer, "if") == 0)
+        return ifsym;
+    else if (strcmp(buffer, "then") == 0)
+        return thensym;
+    else if (strcmp(buffer, "while") == 0)
+        return whilesym;
+    else if (strcmp(buffer, "do") == 0)
+        return dosym;
+    else if (strcmp(buffer, "read") == 0)
+        return readsym;
+    else if (strcmp(buffer, "write") == 0)
+        return writesym;
+    return 0; // invalid reserved word
 }
 
 // checks if the given string matches any special symbo and return its token value
@@ -224,6 +252,24 @@ list *appendToken(list *list, token t)
     return list;
 }
 
+// Add a token to a list, resizing the list if necessary
+void add_token(list *l, token t)
+{
+    if (l->size == l->capacity)
+    {
+        l->capacity *= 2;
+        l->tokens = realloc(l->tokens, sizeof(token) * l->capacity);
+    }
+    l->tokens[l->size++] = t;
+}
+
+// Print the lexeme table to both the console and output file
+void print_lexeme_table(list *l)
+{
+    for (int i = 0; i < l->size; i++)
+        print_both("%10s %20s\n", l->tokens[i].lexeme, l->tokens[i].value);
+}
+
 // prints all of the tokens in list to output and console
 void printAllTokens(list *l)
 {
@@ -241,6 +287,494 @@ void printAllTokens(list *l)
         }
     }
     printOutput("\n");
+}
+
+// Parser/Codegen stuff
+token current_token; // Keep track of current token
+
+// Get next token from token list
+void get_next_token()
+{
+    current_token = token_list->tokens[0];
+    for (int i = 0; i < token_list->size - 1; i++)
+    {
+        token_list->tokens[i] = token_list->tokens[i + 1];
+    }
+    token_list->size--;
+}
+
+// Emit an instruction to the code array
+void emit(int op, int l, int m)
+{
+    if (cx > IS_LEN_MAX)
+    {
+        error(16);
+    }
+    else
+    {
+        code[cx].op = op;
+        code[cx].l = l;
+        code[cx].m = m;
+        cx++;
+    }
+}
+
+// Print an error message and exit
+void error(int error_code)
+{
+    print_both("Error: ");
+    switch (error_code)
+    {
+    case 1:
+        print_both("program must end with a period\n");
+        break;
+    case 2:
+        print_both("const, var, and read keywords must be followed by identifier\n");
+        break;
+    case 3:
+        print_both("symbol name has already been declared\n");
+        break;
+    case 4:
+        print_both("constants must be assigned with =\n");
+        break;
+    case 5:
+        print_both("constants must be assigned an integer value\n");
+        break;
+    case 6:
+        print_both("constant and variables declarations must be followed by a semicolon\n");
+        break;
+    case 7:
+        print_both("undeclared identifier %s\n", current_token.lexeme);
+        break;
+    case 8:
+        print_both("only variable values may be altered\n");
+        break;
+    case 9:
+        print_both("assignment statements must use :=\n");
+        break;
+    case 10:
+        print_both("begin must be followed by end\n");
+        break;
+    case 11:
+        print_both("if must be followed by then\n");
+        break;
+    case 12:
+        print_both("while must be followed by do\n");
+        break;
+    case 13:
+        print_both("condition must contain comparison operator\n");
+        break;
+    case 14:
+        print_both("right parenthesis must follow left parenthesis\n");
+        break;
+    case 15:
+        print_both("arithmetic equations must contain operands, parenthesis, numbers, or symbols\n");
+        break;
+    case 16:
+        print_both("program too long\n");
+    }
+    exit(0);
+}
+
+// Check if a symbol is in the symbol table
+int check_symbol_table(char *string)
+{
+    int i;
+    for (i = 0; i < SYM_TABLE_MAX; i++)
+    {
+        if (strcmp(string, symbol_table[i].name) == 0)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+// Add a symbol to the symbol table
+void add_symbol(int kind, char *name, int val, int level, int addr)
+{
+    symbol_table[tx].kind = kind;
+    strcpy(symbol_table[tx].name, name);
+    symbol_table[tx].val = val;
+    symbol_table[tx].level = level;
+    symbol_table[tx].addr = addr;
+    tx++;
+}
+
+// Parse the program
+void program()
+{
+    get_next_token();                           // Get first token
+    block();                                    // Parse block
+    if (atoi(current_token.value) != periodsym) // Check if program ends with a period
+    {
+        error(1); // Error if it doesn't
+    }
+    emit(9, 0, 3); // Emit halt instruction
+}
+
+void block()
+{
+    const_declaration();              // Parse constants
+    int num_vars = var_declaration(); // Parse variables
+    emit(6, 0, 3 + num_vars);         // Emit INC instruction
+    statement();                      // Parse statement
+}
+
+// Parse constants
+void const_declaration()
+{
+    char name[ID_LEN_MAX + 1]; // Track name of constant
+    // Check if current token is a const
+    if (atoi(current_token.value) == constsym)
+    {
+        do
+        {
+            get_next_token();
+            if (atoi(current_token.value) != identsym) // Check if next token is an identifier
+            {
+                error(2); // Error if it isn't
+            }
+            strcpy(name, current_token.lexeme);                 // Save name of constant
+            if (check_symbol_table(current_token.lexeme) != -1) // Check if constant has already been declared
+            {
+                error(3); // Error if it has
+            }
+            get_next_token();
+            if (atoi(current_token.value) != eqsym) // Check if next token is an equals sign
+            {
+                error(4); // Error if it isn't
+            }
+            get_next_token();
+            if (atoi(current_token.value) != numbersym) // Check if next token is a number
+            {
+                error(5); // Error if it isn't
+            }
+            add_symbol(1, name, atoi(current_token.lexeme), level, 0); // Add constant to symbol table
+            get_next_token();
+        } while (atoi(current_token.value) == commasym); // Continue parsing constants if next token is a comma
+        if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
+        {
+            error(6); // Error if it isn't
+        }
+        get_next_token();
+    }
+}
+
+// Parse variables
+int var_declaration()
+{
+    int num_vars = 0;                        // Track number of variables
+    if (atoi(current_token.value) == varsym) // Check if current token is a var
+    {
+        do
+        {
+            num_vars++; // Increment number of variables
+            get_next_token();
+            if (atoi(current_token.value) != identsym) // Check if next token is an identifier
+            {
+                error(2);
+            }
+            if (check_symbol_table(current_token.lexeme) != -1) // Check if variable has already been declared
+            {
+                error(3); // Error if it has
+            }
+            add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2); // Add variable to symbol table
+            get_next_token();
+        } while (atoi(current_token.value) == commasym); // Continue parsing variables if next token is a comma
+        if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
+        {
+            error(6); // Error if it isn't
+        }
+        get_next_token();
+    }
+    return num_vars; // Return number of variables
+}
+
+// Parse statements
+void statement()
+{
+    if (atoi(current_token.value) == identsym) // Check if current token is an identifier
+    {
+        int sx = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
+        if (sx == -1)
+        {
+            error(7); // Error if it isn't
+        }
+        if (symbol_table[sx].kind != 2) // Check if identifier is a variable
+        {
+            error(8); // Error if it isn't
+        }
+        get_next_token();
+        if (atoi(current_token.value) != becomessym) // Check if next token is a becomes symbol (:=)
+        {
+            error(9); // Error if it isn't
+        }
+        get_next_token();
+        expression();                      // Parse expression
+        emit(4, 0, symbol_table[sx].addr); // Emit STO instruction
+    }
+    else if (atoi(current_token.value) == beginsym) // Check if current token is a begin
+    {
+        do
+        {
+            get_next_token();
+            statement();                                     // Parse statement
+        } while (atoi(current_token.value) == semicolonsym); // Continue parsing statements if next token is a semicolon
+        if (atoi(current_token.value) != endsym)             // Check if next token is an end
+        {
+            error(10); // Error if it isn't
+        }
+        get_next_token();
+    }
+    else if (atoi(current_token.value) == ifsym) // Check if current token is an if
+    {
+        get_next_token();
+        condition();                              // Parse condition
+        int jx = cx;                              // Save current code index to jump to
+        emit(8, 0, 0);                            // Emit JPC instruction
+        if (atoi(current_token.value) != thensym) // Check if next token is a then
+        {
+            error(11); // Error if it isn't
+        }
+        get_next_token();
+        statement();     // Parse statement
+        code[jx].m = cx; // Set JPC instruction's M to current code index
+    }
+    else if (atoi(current_token.value) == whilesym) // Check if current token is a while
+    {
+        get_next_token();
+        int lx = cx;
+        condition();                            // Parse condition
+        if (atoi(current_token.value) != dosym) // Check if next token is a do
+        {
+            error(12); // Error if it isn't
+        }
+        get_next_token();
+        int jx = cx;     // Save current code index to jump to
+        emit(8, 0, 0);   // Emit JPC instruction
+        statement();     // Parse statement
+        emit(7, 0, lx);  // Emit JMP instruction
+        code[jx].m = cx; // Set JPC instruction's M to current code index
+    }
+    else if (atoi(current_token.value) == readsym) // Check if current token is a read
+    {
+        get_next_token();
+        if (atoi(current_token.value) != identsym) // Check if current token is an identifier
+        {
+            error(2); // Error if it isn't
+        }
+        int sx = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
+        if (sx == -1)
+        {
+            error(7); // Error if it isn't
+        }
+        if (symbol_table[sx].kind != 2) // Check if identifier is a variable
+        {
+            error(8); // Error if it isn't
+        }
+        get_next_token();
+        emit(9, 0, 2);  // Emit SIO instruction
+        emit(4, 0, sx); // Emit STO instruction
+    }
+    else if (atoi(current_token.value) == writesym) // Check if current token is a write
+    {
+        get_next_token();
+        expression();  // Parse expression
+        emit(9, 0, 1); // Emit SIO instruction
+    }
+}
+
+// Parse condition
+void condition()
+{
+    if (atoi(current_token.value) == oddsym) // Check if current token is odd
+    {
+        get_next_token();
+        expression();   // Parse expression
+        emit(2, 0, 11); // Emit ODD instruction
+    }
+    else
+    {
+        expression();                      // Parse expression
+        switch (atoi(current_token.value)) // Check if current token is a comparison operator
+        {
+        case eqsym:
+            get_next_token();
+            expression();
+            emit(2, 0, 5); // Emit EQL instruction
+            break;
+        case neqsym:
+            get_next_token();
+            expression();
+            emit(2, 0, 6); // Emit NEQ instruction
+            break;
+        case lessym:
+            get_next_token();
+            expression();
+            emit(2, 0, 7); // Emit LSS instruction
+            break;
+        case leqsym:
+            get_next_token();
+            expression();
+            emit(2, 0, 8); // Emit LEQ instruction
+            break;
+        case gtrsym:
+            get_next_token();
+            expression();
+            emit(2, 0, 9); // Emit GTR instruction
+            break;
+        case geqsym:
+            get_next_token();
+            expression();
+            emit(2, 0, 10); // Emit GEQ instruction
+            break;
+        default:
+            error(13); // Error if it isn't
+            break;
+        }
+    }
+}
+
+// Parse expression
+void expression()
+{
+    term(); // Parse term
+    // Check if current token is a plus or minus
+    while (atoi(current_token.value) == plussym || atoi(current_token.value) == minussym)
+    {
+        get_next_token();
+        term();                                   // Parse term
+        if (atoi(current_token.value) == plussym) // Check if current token is a plus
+        {
+            emit(2, 0, 1); // Emit ADD instruction
+        }
+        else
+        {
+            emit(2, 0, 2); // Emit SUB instruction
+        }
+    }
+}
+
+// Parse term
+void term()
+{
+    factor(); // Parse factor
+    while (atoi(current_token.value) == multsym || atoi(current_token.value) == slashsym)
+    {
+        if (atoi(current_token.value) == multsym) // Check if current token is a multiply
+        {
+            get_next_token();
+            factor();      // Parse factor
+            emit(2, 0, 3); // Emit MUL
+        }
+        else
+        {
+            get_next_token();
+            factor();      // Parse factor
+            emit(2, 0, 4); // Emit DIV
+        }
+    }
+}
+
+// Parse factor
+void factor()
+{
+    if (atoi(current_token.value) == identsym) // Check if current token is an identifier
+    {
+        int sx = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
+        if (sx == -1)
+        {
+            error(7); // Error if it isn't
+        }
+        if (symbol_table[sx].kind == 1) // Check if identifier is a constant
+        {
+            emit(1, 0, symbol_table[sx].val); // Emit LIT instruction
+        }
+        else
+        {
+            emit(3, level - symbol_table[sx].level, symbol_table[sx].addr); // Emit LOD instruction
+        }
+        get_next_token();
+    }
+    else if (atoi(current_token.value) == numbersym) // Check if current token is a number
+    {
+        emit(1, 0, atoi(current_token.lexeme)); // Emit LIT instruction
+        get_next_token();
+    }
+    else if (atoi(current_token.value) == lparentsym) // Check if current token is a left parenthesis
+    {
+        get_next_token();
+        expression();                                // Parse expression
+        if (atoi(current_token.value) != rparentsym) // Check if currenet token is right parenthesis
+        {
+            error(14); // Error if it isn't
+        }
+        get_next_token();
+    }
+    else
+    {
+        error(15); // Error if current token is none of the above
+    }
+}
+
+// Print symbol table
+void print_symbol_table()
+{
+    print_both("Symbol Table:\n");
+    print_both("%10s %10s %10s %10s %10s\n", "kind", "name", "val", "level", "addr");
+    for (int i = 0; i < tx; i++)
+    {
+        print_both("%10d %10s %10d %10d %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr);
+    }
+}
+
+// Print assmebly code
+void print_instructions()
+{
+
+    print_both("Assembly Code:\n");
+    print_both("%10s %10s %10s %10s\n", "line", "op", "l", "m");
+    for (int i = 0; i < cx; i++)
+    {
+        char name[4];
+        get_op_name(code[i].op, name);
+        print_both("%10d %10s %10d %10d\n", i, name, code[i].l, code[i].m);
+    }
+}
+
+// gets operation name from the op code
+void get_op_name(int op, char *name)
+{
+    switch (op)
+    {
+    case 1:
+        strcpy(name, "LIT");
+        break;
+    case 2:
+        strcpy(name, "OPR");
+        break;
+    case 3:
+        strcpy(name, "LOD");
+        break;
+    case 4:
+        strcpy(name, "STO");
+        break;
+    case 5:
+        strcpy(name, "CAL");
+        break;
+    case 6:
+        strcpy(name, "INC");
+        break;
+    case 7:
+        strcpy(name, "JMP");
+        break;
+    case 8:
+        strcpy(name, "JPC");
+        break;
+    case 9:
+        strcpy(name, "SYS");
+        break;
+    }
 }
 
 int main(int argc, char *argv[])
