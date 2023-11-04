@@ -1,7 +1,7 @@
-# Pass each file prefixed with error to the compiler and output the error to a file prefixed with error*out.txt
+# Loop through each error case 1-16 and output the results to a file
 
-for file in error*.txt
+for i in {1..16}
 do
-    echo "Running $file"
-    ./a.out $file ${file%.txt}out.txt
+    echo "Running error case $i"
+    ./a.out error$i.txt error$i\out.txt
 done
