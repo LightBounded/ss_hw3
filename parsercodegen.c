@@ -353,56 +353,32 @@ void emit(int op, int l, int m)
 // Print an error message and exit
 void error(int error_code)
 {
-    printOutput("Error: ");
-    switch (error_code)
+    const char *error_messages[] = {
+        "program must end with a period",
+        "const, var, and read keywords must be followed by identifier",
+        "symbol name has already been declared",
+        "constants must be assigned with =",
+        "constants must be assigned an integer value",
+        "constant and variables declarations must be followed by a semicolon",
+        "undeclared identifier %s",
+        "only variable values may be altered",
+        "assignment statements must use :=",
+        "begin must be followed by end",
+        "if must be followed by then",
+        "while must be followed by do",
+        "condition must contain comparison operator",
+        "right parenthesis must follow left parenthesis",
+        "arithmetic equations must contain operands, parenthesis, numbers, or symbols",
+        "program too long"};
+    const char *error_message = error_messages[error_code - 1];
+    if (error_code == 7)
     {
-    case 1:
-        printOutput("program must end with a period\n");
-        break;
-    case 2:
-        printOutput("const, var, and read keywords must be followed by identifier\n");
-        break;
-    case 3:
-        printOutput("symbol name has already been declared\n");
-        break;
-    case 4:
-        printOutput("constants must be assigned with =\n");
-        break;
-    case 5:
-        printOutput("constants must be assigned an integer value\n");
-        break;
-    case 6:
-        printOutput("constant and variables declarations must be followed by a semicolon\n");
-        break;
-    case 7:
-        printOutput("undeclared identifier %s\n", current_token.lexeme);
-        break;
-    case 8:
-        printOutput("only variable values may be altered\n");
-        break;
-    case 9:
-        printOutput("assignment statements must use :=\n");
-        break;
-    case 10:
-        printOutput("begin must be followed by end\n");
-        break;
-    case 11:
-        printOutput("if must be followed by then\n");
-        break;
-    case 12:
-        printOutput("while must be followed by do\n");
-        break;
-    case 13:
-        printOutput("condition must contain comparison operator\n");
-        break;
-    case 14:
-        printOutput("right parenthesis must follow left parenthesis\n");
-        break;
-    case 15:
-        printOutput("arithmetic equations must contain operands, parenthesis, numbers, or symbols\n");
-        break;
-    case 16:
-        printOutput("program too long\n");
+        printOutput("Error: ");
+        printOutput(error_message, current_token.lexeme);
+    }
+    else
+    {
+        printOutput("Error: %s\n", error_message);
     }
     exit(0);
 }
@@ -432,12 +408,12 @@ void add_symbol(int kind, char *name, int val, int level, int addr, int mark)
     tablex++;
 }
 
-// Parse the program
+// Parses the program
 void program()
 {
-    get_next_token();                           // Get first token
-    block();                                    // Parse block
-    if (atoi(current_token.value) != periodsym) // Check if program ends with a period
+    get_next_token();                           // Gets first token
+    block();                                    // Parses block
+    if (atoi(current_token.value) != periodsym) // Checks if program ends with a period
     {
         error(1); // Error if it doesn't
     }
@@ -493,9 +469,10 @@ void const_declaration()
 }
 
 // Parse variables
+// Parse variable declarations
 int var_declaration()
 {
-    int num_vars = 0;                        // Track num of variables
+    int num_vars = 0;                        // Track number of variables
     if (atoi(current_token.value) == varsym) // Check if current token is a var
     {
         do
@@ -504,13 +481,17 @@ int var_declaration()
             get_next_token();
             if (atoi(current_token.value) != identsym) // Check if next token is an identifier
             {
-                error(2);
+                error(2); // Error if it isn't
             }
             if (check_symbol_table(current_token.lexeme) != -1) // Check if variable has already been declared
             {
                 error(3); // Error if it has
             }
-            add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2, 0); // Add variable to symbol table
+            // Add variable to symbol table
+            // kind = 2 for variables
+            // level = 0 since it's a global variable
+            // addr = num_vars + 2 since the first two addresses are reserved for the static link and dynamic link
+            add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2, 0);
             get_next_token();
         } while (atoi(current_token.value) == commasym); // Continue parsing variables if next token is a comma
         if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
