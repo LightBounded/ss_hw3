@@ -779,26 +779,36 @@ void get_op_name(int op, char *name)
 
 int main(int argc, char *argv[])
 {
+
+    if (argc != 3)
+    {
+        print_both("Usage: %s <input file> <output file>\n", argv[0]);
+        return 1;
+    }
+
     // establishing the files to read from, and one to write to (input/output)
     inputFile = fopen(argv[1], "r");
     outputFile = fopen(argv[2], "w");
 
-    // beginning of printing for top of output to beginning of lexeme table
-    printOutput("Source Program:\n");
-    printOriginal();
-    printOutput("\n");
+    if (inputFile == NULL)
+    {
+        print_both("Error: Could not open input file %s\n", argv[1]);
+        return 1;
+    }
 
-    printOutput("Lexeme Table:\n");
-    printOutput("\n");
-    printOutput("%10s %20s\n", "lexeme", "token type");
+    if (outputFile == NULL)
+    {
+        print_both("Error: Could not open output file %s\n", argv[2]);
+        return 1;
+    }
 
     // creating the list of tokens
     token_list = createNewList();
 
     char c;
+    int buffer_index = 0;
 
     char buffer[TOKEN_LEN_MAX + 1] = {0};
-    int buffer_index = 0;
 
     // loop through the input file and check for tokens until end of file (EOF)
     // this loop goes char by char
@@ -979,14 +989,15 @@ int main(int argc, char *argv[])
                 token doubleSpecial;
                 int token_value = specialToToken(buffer);
 
-                if (!token_value)
+                if (!token_value) {
                     // given 2 symbols are invalid
-                    for (int i = 0; i < buffer_index; i++)
-                        printOutput("%10c %20s\n", buffer[i], "ERROR: INVALID SYMBOL");
+                    // for (int i = 0; i < buffer_index; i++)
+                    //     printOutput("%10c %20s\n", buffer[i], "ERROR: INVALID SYMBOL");
+                }
                 else
                 {
                     // both valid symbols
-                    printOutput("%10s %20d\n", buffer, token_value);
+                    // printOutput("%10s %20d\n", buffer, token_value);
                     sprintf(doubleSpecial.value, "%d", token_value);
                     strcpy(doubleSpecial.lexeme, buffer);
                     appendToken(token_list, doubleSpecial);
@@ -1016,14 +1027,21 @@ int main(int argc, char *argv[])
         }
     }
 
-    // this is where all the printing and freeing happens for list
-    printOutput("\n");
-    printOutput("Token List:\n");
+    // First instruction is always JMP 0 3
+    code[0].op = 7;
+    code[0].l = 0;
+    code[0].m = 3;
+    cx++;
 
-    printAllTokens(token_list);
-    printf("\n");
+    // Read in tokens in the tokens list and generate code
+    program();
+
+    print_instructions();
+    print_symbol_table();
 
     freeList(token_list);
+    fclose(inputFile);  // Close input file
+    fclose(outputFile); // Close output file
 
     return 0; // end of program
 } // end of MAIN METHOD
