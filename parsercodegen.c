@@ -66,58 +66,63 @@ typedef struct
     int capacity;
 } list;
 
-// this is the list of tokens that will be used to store the tokens for the parser
-list *token_list;
-
 typedef struct
 {
-    int kind;      // const = 1, var = 2, proc = 3
-    char name[10]; // name up to 11 chars
-    int val;       // number (ASCII value)
-    int level;     // L level
-    int addr;      // M address
-    int mark;      // to indicate unavailable or deleted
+    int kind; // const = 1, var = 2, proc = 3
+    char name[10];
+    int val; // ASCII value of num
+    int level;
+    int addr;
+    int mark; // marks if unavailable/deleted
 } symbol;
 
 typedef struct
 {
-    int op; // opcode
-    int l;  // L
-    int m;  // M
+    int op; // The operation
+    int l;
+    int m;
 } instruction;
 
 FILE *inputFile;
 FILE *outputFile;
+list *token_list;
 
-FILE *inputFile;
-FILE *outputFile;
-symbol symbol_table[SYM_TABLE_MAX]; // Global symbol table
-instruction code[IS_LEN_MAX];       // Global code array
-int cx = 0;                         // Code index
-int tx = 0;                         // Symbol table index
-int level = 0;                      // Current level
+symbol symbol_table[SYM_TABLE_MAX];
+instruction code[IS_LEN_MAX];
 
-// Function prototypes
+// code index
+int cx = 0;
+// symbol table index
+int tx = 0;
+int level = 0;
+
+// Functions
 char peekc();
+
 void printOutput(const char *format, ...);
 void print_source_code();
 void clear_to_index(char *str, int index);
+
 int handle_reserved_word(char *buffer);
 int handle_special_symbol(char *buffer);
 int is_special_symbol(char c);
-list *create_list();
-list *destroy_list(list *l);
-list *append_token(list *l, token t);
+
 void add_token(list *l, token t);
 void print_lexeme_table(list *l);
 void print_tokens(list *l);
 
-// Parser/Codegen function prototypes
+list *create_list();
+list *destroy_list(list *l);
+list *append_token(list *l, token t);
+
+// Parser/Codegen Functions
 void get_next_token();
 void emit(int op, int l, int m);
 void error(int error_code);
+
 int check_symbol_table(char *string);
-void add_symbol(int kind, char *name, int val, int level, int addr);
+void add_symbol(int kind, char *name, int val, int level, int addr, int mark);
+
 void program();
 void block();
 void const_declaration();
@@ -127,6 +132,7 @@ void condition();
 void expression();
 void term();
 void factor();
+
 void print_symbol_table();
 void print_instructions();
 void get_op_name(int op, char *name);
@@ -424,13 +430,14 @@ int check_symbol_table(char *string)
     return -1;
 }
 // Add a symbol to the symbol table
-void add_symbol(int kind, char *name, int val, int level, int addr)
+void add_symbol(int kind, char *name, int val, int level, int addr, int mark)
 {
     symbol_table[tx].kind = kind;
     strcpy(symbol_table[tx].name, name);
     symbol_table[tx].val = val;
     symbol_table[tx].level = level;
     symbol_table[tx].addr = addr;
+    symbol_table[tx].mark = mark;
     tx++;
 }
 
@@ -483,7 +490,7 @@ void const_declaration()
             {
                 error(5); // Error if it isn't
             }
-            add_symbol(1, name, atoi(current_token.lexeme), level, 0); // Add constant to symbol table
+            add_symbol(1, name, atoi(current_token.lexeme), level, 0, 0); // Add constant to symbol table
             get_next_token();
         } while (atoi(current_token.value) == commasym); // Continue parsing constants if next token is a comma
         if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
@@ -512,7 +519,7 @@ int var_declaration()
             {
                 error(3); // Error if it has
             }
-            add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2); // Add variable to symbol table
+            add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2, 0); // Add variable to symbol table
             get_next_token();
         } while (atoi(current_token.value) == commasym); // Continue parsing variables if next token is a comma
         if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
@@ -754,11 +761,14 @@ void factor()
 // Print symbol table
 void print_symbol_table()
 {
-    printOutput("Symbol Table:\n");
-    printOutput("%10s %10s %10s %10s %10s\n", "kind", "name", "val", "level", "addr");
+    printOutput("\nSymbol Table:\n");
+    printOutput("%10s %10s %10s %10s %10s %10s\n", "Kind", "Name", "Value", "Level", "Address", "Mark");
     for (int i = 0; i < tx; i++)
     {
-        printOutput("%10d %10s %10d %10d %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr);
+        if (symbol_table[i].kind == 1)
+            printOutput("%10d %10s %10d %10s %10s %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, "-", "-", 1);
+        else
+            printOutput("%10d %10s %10d %10d %10d %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr, 1);
     }
 }
 
@@ -766,8 +776,8 @@ void print_symbol_table()
 void print_instructions()
 {
 
-    printOutput("Assembly Code:\n");
-    printOutput("%10s %10s %10s %10s\n", "line", "op", "l", "m");
+    printOutput("\nAssembly Code:\n");
+    printOutput("%10s %10s %10s %10s\n", "Line", "OP", "L", "M");
     for (int i = 0; i < cx; i++)
     {
         char name[4];
