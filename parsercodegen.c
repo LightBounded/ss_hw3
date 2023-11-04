@@ -111,7 +111,7 @@ void get_next_token();
 void emit(int op, int l, int m);
 void error(int error_code);
 int check_symbol_table(char *string);
-void add_symbol(int kind, char *name, int val, int level, int addr);
+void add_symbol(int kind, char *name, int val, int level, int addr, int mark);
 void program();
 void block();
 void const_declaration();
@@ -693,13 +693,14 @@ int check_symbol_table(char *string)
 }
 
 // Add a symbol to the symbol table
-void add_symbol(int kind, char *name, int val, int level, int addr)
+void add_symbol(int kind, char *name, int val, int level, int addr, int mark)
 {
   symbol_table[tx].kind = kind;
   strcpy(symbol_table[tx].name, name);
   symbol_table[tx].val = val;
   symbol_table[tx].level = level;
   symbol_table[tx].addr = addr;
+  symbol_table[tx].mark = mark;
   tx++;
 }
 
@@ -752,7 +753,7 @@ void const_declaration()
       {
         error(5); // Error if it isn't
       }
-      add_symbol(1, name, atoi(current_token.lexeme), level, 0); // Add constant to symbol table
+      add_symbol(1, name, atoi(current_token.lexeme), level, 0, 0); // Add constant to symbol table
       get_next_token();
     } while (atoi(current_token.value) == commasym); // Continue parsing constants if next token is a comma
     if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
@@ -781,7 +782,7 @@ int var_declaration()
       {
         error(3); // Error if it has
       }
-      add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2); // Add variable to symbol table
+      add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2, 0); // Add variable to symbol table
       get_next_token();
     } while (atoi(current_token.value) == commasym); // Continue parsing variables if next token is a comma
     if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
@@ -832,16 +833,16 @@ void statement()
   else if (atoi(current_token.value) == ifsym) // Check if current token is an if
   {
     get_next_token();
-    condition();                              // Parse condition
-    int jx = cx;                              // Save current code index to jump to
+    condition(); // Parse condition
+    int jx = cx;
     emit(8, 0, 0);                            // Emit JPC instruction
     if (atoi(current_token.value) != thensym) // Check if next token is a then
     {
       error(11); // Error if it isn't
     }
     get_next_token();
-    statement();     // Parse statement
-    code[jx].m = cx; // Set JPC instruction's M to current code index
+    statement();         // Parse statement
+    code[jx].m = cx * 3; // Set JPC instruction's M to current code index
   }
   else if (atoi(current_token.value) == whilesym) // Check if current token is a while
   {
@@ -853,11 +854,11 @@ void statement()
       error(12); // Error if it isn't
     }
     get_next_token();
-    int jx = cx;     // Save current code index to jump to
-    emit(8, 0, 0);   // Emit JPC instruction
-    statement();     // Parse statement
-    emit(7, 0, lx);  // Emit JMP instruction
-    code[jx].m = cx; // Set JPC instruction's M to current code index
+    int jx = cx;         // Save current code index to jump to
+    emit(8, 0, 0);       // Emit JPC instruction
+    statement();         // Parse statement
+    emit(7, 0, lx * 3);  // Emit JMP instruction
+    code[jx].m = cx * 3; // Set JPC instruction's M to current code index
   }
   else if (atoi(current_token.value) == readsym) // Check if current token is a read
   {
@@ -1024,10 +1025,10 @@ void factor()
 void print_symbol_table()
 {
   print_both("Symbol Table:\n");
-  print_both("%10s %10s %10s %10s %10s\n", "kind", "name", "val", "level", "addr");
+  print_both("%10s %10s %10s %10s %10s %10s\n", "kind", "name", "val", "level", "addr", "mark");
   for (int i = 0; i < tx; i++)
   {
-    print_both("%10d %10s %10d %10d %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr);
+    print_both("%10d %10s %10d %10d %10d %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr, symbol_table[i].mark);
   }
 }
 
