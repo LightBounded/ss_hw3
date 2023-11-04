@@ -139,13 +139,13 @@ int main(int argc, char *argv[])
   if (input_file == NULL)
   {
     print_both("Error: Could not open input file %s\n", argv[1]);
-    return 1;
+    exit(1);
   }
 
   if (output_file == NULL)
   {
     print_both("Error: Could not open output file %s\n", argv[2]);
-    return 1;
+    exit(1);
   }
 
   // print_both("Source Program:\n");
@@ -178,6 +178,7 @@ int main(int argc, char *argv[])
           token t;
           if (buffer_index > MAX_NUMBER_LENGTH)
           {
+            exit(1);
             // Number is too long
             // print_both("%10s %20s\n", buffer, "ERROR: NUMBER TOO LONG");
           }
@@ -244,6 +245,7 @@ int main(int argc, char *argv[])
             token t;
             if (buffer_index > MAX_IDENTIFIER_LENGTH) // Check if identifier is too long
             {
+              exit(1);
               // print_both("%10s %20s\n", buffer, "ERROR: IDENTIFIER TOO LONG");
             }
             else
@@ -322,6 +324,7 @@ int main(int argc, char *argv[])
           // All symbols are invalid
           // for (int i = 0; i < buffer_index; i++)
           //   print_both("%10c %20s\n", buffer[i], "ERROR: INVALID SYMBOL");
+          exit(1);
         }
         else
         {
@@ -342,6 +345,7 @@ int main(int argc, char *argv[])
         int token_value = handle_special_symbol(buffer);
         if (!token_value)
         {
+          exit(1);
           // print_both("%10c %20s\n", c, "ERROR: INVALID SYMBOL");
         }
         else
@@ -946,14 +950,16 @@ void expression()
   // Check if current token is a plus or minus
   while (atoi(current_token.value) == plussym || atoi(current_token.value) == minussym)
   {
-    get_next_token();
-    term();                                   // Parse term
     if (atoi(current_token.value) == plussym) // Check if current token is a plus
     {
+      get_next_token();
+      term();
       emit(2, 0, 1); // Emit ADD instruction
     }
     else
     {
+      get_next_token();
+      term();
       emit(2, 0, 2); // Emit SUB instruction
     }
   }
@@ -1025,17 +1031,17 @@ void factor()
 void print_symbol_table()
 {
   print_both("\nSymbol Table:\n");
-  print_both("%10s %10s %10s %10s %10s %10s\n", "Kind |", "Name |", "Value |", "Level |", "Address |", "Mark", "\n");
-  print_both("    -------------------------------------------------------------\n");
-  
+  print_both("%10s | %10s | %10s | %10s | %10s | %10s\n", "Kind", "Name", "Value", "Level", "Address", "Mark", "\n");
+  print_both("    -----------------------------------------------------------------------\n");
+
   for (int i = 0; i < tx; i++)
   {
     symbol_table[i].mark = 1;
     if (symbol_table[i].kind == 1)
       print_both("%10d | %10s | %10d | %10s | %10s | %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, "-", "-", symbol_table[i].mark);
     else
-   
-      print_both("%8d | %8s | %8d | %8d | %8d | %8d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr, symbol_table[i].mark);
+
+      print_both("%10d | %10s | %10d | %10d | %10d | %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr, symbol_table[i].mark);
   }
 }
 
