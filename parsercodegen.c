@@ -1032,7 +1032,7 @@ void print_symbol_table()
   {
     symbol_table[i].mark = 1;
     if (symbol_table[i].kind == 1)
-      print_both("%10d | %10s | %10d | %10s | %10s | %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, "-", "-", symbol_table[i].mark);
+      print_both("%8d | %8s | %8d | %8s | %8s | %8d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, "-", "-", symbol_table[i].mark);
     else
    
       print_both("%8d | %8s | %8d | %8d | %8d | %8d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr, symbol_table[i].mark);
