@@ -314,9 +314,37 @@ int main(int argc, char *argv[])
           continue;
         }
 
+        // Handle special case where the second symbol is a semicolon
+        if (nextc == ';')
+        {
+          // Check if first symbol is a valid symbol
+          token t;
+          int token_value = handle_special_symbol(buffer);
+          if (!token_value)
+          {
+            exit(1);
+          }
+
+          // Append first symbol to token list
+          sprintf(t.value, "%d", token_value);
+          strcpy(t.lexeme, buffer);
+          append_token(token_list, t);
+
+          // Append semicolon to token list
+          sprintf(t.value, "%d", semicolonsym);
+          strcpy(t.lexeme, ";");
+          append_token(token_list, t);
+
+          clear_to_index(buffer, buffer_index);
+          buffer_index = 0;
+
+          continue;
+        }
+
         // We have two pontentially valid symbols, so we need to check if they make a valid symbol
         c = getc(input_file);
         buffer[buffer_index++] = c;
+
         token t;
         int token_value = handle_special_symbol(buffer);
         if (!token_value)
@@ -679,7 +707,7 @@ void error(int error_code)
   case 16:
     print_both("program too long\n");
   }
-  exit(0);
+  exit(1);
 }
 
 // Check if a symbol is in the symbol table
