@@ -78,7 +78,7 @@ typedef struct
 
 typedef struct
 {
-    int op; // The operation
+    int op; // The operation code
     int l;
     int m;
 } instruction;
@@ -91,38 +91,30 @@ symbol symbol_table[SYM_TABLE_MAX];
 instruction code[IS_LEN_MAX];
 
 // code index
-int cx = 0;
+int codex = 0;
 // symbol table index
-int tx = 0;
+int tablex = 0;
 int level = 0;
 
-// Functions
+// Prototype functions for the parser/codegen
 char peekc();
-
 void printOutput(const char *format, ...);
 void print_source_code();
 void clear_to_index(char *str, int index);
-
 int handle_reserved_word(char *buffer);
 int handle_special_symbol(char *buffer);
 int is_special_symbol(char c);
-
 void add_token(list *l, token t);
 void print_lexeme_table(list *l);
 void print_tokens(list *l);
-
 list *create_list();
 list *destroy_list(list *l);
 list *append_token(list *l, token t);
-
-// Parser/Codegen Functions
 void get_next_token();
 void emit(int op, int l, int m);
 void error(int error_code);
-
 int check_symbol_table(char *string);
 void add_symbol(int kind, char *name, int val, int level, int addr, int mark);
-
 void program();
 void block();
 void const_declaration();
@@ -132,7 +124,6 @@ void condition();
 void expression();
 void term();
 void factor();
-
 void print_symbol_table();
 void print_instructions();
 void get_op_name(int op, char *name);
@@ -165,7 +156,7 @@ void printOutput(const char *format, ...)
     }
 }
 
-// this prints the original to the console above the lexeme and in the the output file
+// prints the original to the console above the lexeme and in the the output file
 void printOriginal()
 {
     char buffer[1024];
@@ -346,16 +337,16 @@ void get_next_token()
 // Emit an instruction to the code array
 void emit(int op, int l, int m)
 {
-    if (cx > IS_LEN_MAX)
+    if (codex > IS_LEN_MAX)
     {
         error(16);
     }
     else
     {
-        code[cx].op = op;
-        code[cx].l = l;
-        code[cx].m = m;
-        cx++;
+        code[codex].op = op;
+        code[codex].l = l;
+        code[codex].m = m;
+        codex++;
     }
 }
 
@@ -432,13 +423,13 @@ int check_symbol_table(char *string)
 // Add a symbol to the symbol table
 void add_symbol(int kind, char *name, int val, int level, int addr, int mark)
 {
-    symbol_table[tx].kind = kind;
-    strcpy(symbol_table[tx].name, name);
-    symbol_table[tx].val = val;
-    symbol_table[tx].level = level;
-    symbol_table[tx].addr = addr;
-    symbol_table[tx].mark = mark;
-    tx++;
+    symbol_table[tablex].kind = kind;
+    strcpy(symbol_table[tablex].name, name);
+    symbol_table[tablex].val = val;
+    symbol_table[tablex].level = level;
+    symbol_table[tablex].addr = addr;
+    symbol_table[tablex].mark = mark;
+    tablex++;
 }
 
 // Parse the program
@@ -504,7 +495,7 @@ void const_declaration()
 // Parse variables
 int var_declaration()
 {
-    int num_vars = 0;                        // Track number of variables
+    int num_vars = 0;                        // Track num of variables
     if (atoi(current_token.value) == varsym) // Check if current token is a var
     {
         do
@@ -571,31 +562,31 @@ void statement()
     {
         get_next_token();
         condition();                              // Parse condition
-        int jx = cx;                              // Save current code index to jump to
+        int jx = codex;                           // Save current code index to jump to
         emit(8, 0, 0);                            // Emit JPC instruction
         if (atoi(current_token.value) != thensym) // Check if next token is a then
         {
             error(11); // Error if it isn't
         }
         get_next_token();
-        statement();     // Parse statement
-        code[jx].m = cx; // Set JPC instruction's M to current code index
+        statement();        // Parse statement
+        code[jx].m = codex; // Set JPC instruction's M to current code index
     }
     else if (atoi(current_token.value) == whilesym) // Check if current token is a while
     {
         get_next_token();
-        int lx = cx;
+        int lx = codex;
         condition();                            // Parse condition
         if (atoi(current_token.value) != dosym) // Check if next token is a do
         {
             error(12); // Error if it isn't
         }
         get_next_token();
-        int jx = cx;     // Save current code index to jump to
-        emit(8, 0, 0);   // Emit JPC instruction
-        statement();     // Parse statement
-        emit(7, 0, lx);  // Emit JMP instruction
-        code[jx].m = cx; // Set JPC instruction's M to current code index
+        int jx = codex;     // Save current code index to jump to
+        emit(8, 0, 0);      // Emit JPC instruction
+        statement();        // Parse statement
+        emit(7, 0, lx);     // Emit JMP instruction
+        code[jx].m = codex; // Set JPC instruction's M to current code index
     }
     else if (atoi(current_token.value) == readsym) // Check if current token is a read
     {
@@ -633,46 +624,37 @@ void condition()
         get_next_token();
         expression();   // Parse expression
         emit(2, 0, 11); // Emit ODD instruction
+        return;
     }
-    else
+
+    expression();                       // Parse expression
+    int op = atoi(current_token.value); // Get operator
+    get_next_token();
+    expression(); // Parse expression
+
+    switch (op) // Check operator
     {
-        expression();                      // Parse expression
-        switch (atoi(current_token.value)) // Check if current token is a comparison operator
-        {
-        case eqsym:
-            get_next_token();
-            expression();
-            emit(2, 0, 5); // Emit EQL instruction
-            break;
-        case neqsym:
-            get_next_token();
-            expression();
-            emit(2, 0, 6); // Emit NEQ instruction
-            break;
-        case lessym:
-            get_next_token();
-            expression();
-            emit(2, 0, 7); // Emit LSS instruction
-            break;
-        case leqsym:
-            get_next_token();
-            expression();
-            emit(2, 0, 8); // Emit LEQ instruction
-            break;
-        case gtrsym:
-            get_next_token();
-            expression();
-            emit(2, 0, 9); // Emit GTR instruction
-            break;
-        case geqsym:
-            get_next_token();
-            expression();
-            emit(2, 0, 10); // Emit GEQ instruction
-            break;
-        default:
-            error(13); // Error if it isn't
-            break;
-        }
+    case eqsym:
+        emit(2, 0, 5); // Emit EQL instruction
+        break;
+    case neqsym:
+        emit(2, 0, 6); // Emit NEQ instruction
+        break;
+    case lessym:
+        emit(2, 0, 7); // Emit LSS instruction
+        break;
+    case leqsym:
+        emit(2, 0, 8); // Emit LEQ instruction
+        break;
+    case gtrsym:
+        emit(2, 0, 9); // Emit GTR instruction
+        break;
+    case geqsym:
+        emit(2, 0, 10); // Emit GEQ instruction
+        break;
+    default:
+        error(13); // Error if it isn't
+        break;
     }
 }
 
@@ -680,19 +662,27 @@ void condition()
 void expression()
 {
     term(); // Parse term
-    // Check if current token is a plus or minus
-    while (atoi(current_token.value) == plussym || atoi(current_token.value) == minussym)
+
+    int is_add = atoi(current_token.value) == plussym;
+    int is_subtract = atoi(current_token.value) == minussym;
+
+    while (is_add || is_subtract)
     {
-        get_next_token();
-        term();                                   // Parse term
-        if (atoi(current_token.value) == plussym) // Check if current token is a plus
+        if (is_add)
         {
+            get_next_token();
+            term();        // Parse term
             emit(2, 0, 1); // Emit ADD instruction
         }
         else
         {
+            get_next_token();
+            term();        // Parse term
             emit(2, 0, 2); // Emit SUB instruction
         }
+
+        is_add = atoi(current_token.value) == plussym;
+        is_subtract = atoi(current_token.value) == minussym;
     }
 }
 
@@ -700,9 +690,13 @@ void expression()
 void term()
 {
     factor(); // Parse factor
-    while (atoi(current_token.value) == multsym || atoi(current_token.value) == slashsym)
+
+    int is_multiply = atoi(current_token.value) == multsym;
+    int is_divide = atoi(current_token.value) == slashsym;
+
+    while (is_multiply || is_divide)
     {
-        if (atoi(current_token.value) == multsym) // Check if current token is a multiply
+        if (is_multiply)
         {
             get_next_token();
             factor();      // Parse factor
@@ -714,47 +708,50 @@ void term()
             factor();      // Parse factor
             emit(2, 0, 4); // Emit DIV
         }
+
+        is_multiply = atoi(current_token.value) == multsym;
+        is_divide = atoi(current_token.value) == slashsym;
     }
 }
 
 // Parse factor
 void factor()
 {
-    if (atoi(current_token.value) == identsym) // Check if current token is an identifier
+    int sx;
+    switch (atoi(current_token.value))
     {
-        int sx = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
+    case identsym:
+        sx = check_symbol_table(current_token.lexeme);
         if (sx == -1)
         {
-            error(7); // Error if it isn't
+            error(7);
         }
-        if (symbol_table[sx].kind == 1) // Check if identifier is a constant
+        if (symbol_table[sx].kind == 1)
         {
-            emit(1, 0, symbol_table[sx].val); // Emit LIT instruction
+            emit(1, 0, symbol_table[sx].val);
         }
         else
         {
-            emit(3, level - symbol_table[sx].level, symbol_table[sx].addr); // Emit LOD instruction
+            emit(3, level - symbol_table[sx].level, symbol_table[sx].addr);
         }
         get_next_token();
-    }
-    else if (atoi(current_token.value) == numbersym) // Check if current token is a number
-    {
-        emit(1, 0, atoi(current_token.lexeme)); // Emit LIT instruction
+        break;
+    case numbersym:
+        emit(1, 0, atoi(current_token.lexeme));
         get_next_token();
-    }
-    else if (atoi(current_token.value) == lparentsym) // Check if current token is a left parenthesis
-    {
+        break;
+    case lparentsym:
         get_next_token();
-        expression();                                // Parse expression
-        if (atoi(current_token.value) != rparentsym) // Check if currenet token is right parenthesis
+        expression();
+        if (atoi(current_token.value) != rparentsym)
         {
-            error(14); // Error if it isn't
+            error(14);
         }
         get_next_token();
-    }
-    else
-    {
-        error(15); // Error if current token is none of the above
+        break;
+    default:
+        error(15);
+        break;
     }
 }
 
@@ -763,7 +760,7 @@ void print_symbol_table()
 {
     printOutput("\nSymbol Table:\n");
     printOutput("%10s %10s %10s %10s %10s %10s\n", "Kind", "Name", "Value", "Level", "Address", "Mark");
-    for (int i = 0; i < tx; i++)
+    for (int i = 0; i < tablex; i++)
     {
         if (symbol_table[i].kind == 1)
             printOutput("%10d %10s %10d %10s %10s %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, "-", "-", 1);
@@ -772,13 +769,14 @@ void print_symbol_table()
     }
 }
 
-// Print assmebly code
+// Prints the assembly code
 void print_instructions()
 {
 
     printOutput("\nAssembly Code:\n");
     printOutput("%10s %10s %10s %10s\n", "Line", "OP", "L", "M");
-    for (int i = 0; i < cx; i++)
+
+    for (int i = 0; i < codex; i++)
     {
         char name[4];
         get_op_name(code[i].op, name);
@@ -824,6 +822,7 @@ void get_op_name(int op, char *name)
 int main(int argc, char *argv[])
 {
 
+    // If num of arguments != 3, it prints a usage message and returns 1.
     if (argc != 3)
     {
         printOutput("Usage: %s <input file> <output file>\n", argv[0]);
@@ -879,12 +878,10 @@ int main(int argc, char *argv[])
                     if (buffer_index > NUM_LEN_MAX)
                     {
                         // given number is larger than max length
-                        // printOutput("%10s %20s\n", buffer, "ERROR: NUMBER TOO LONG");
                     }
                     else
                     {
                         // given number is VALID
-                        // printOutput("%10s %20d\n", buffer, numbersym);
                         sprintf(t.value, "%d", numbersym);
                         strcpy(t.lexeme, buffer);
                         appendToken(token_list, t);
@@ -908,8 +905,6 @@ int main(int argc, char *argv[])
                 {
                     // next char is invalid number
                     token tokenOfInvalid;
-
-                    // printOutput("%10s %20d\n", buffer, numbersym);
 
                     sprintf(tokenOfInvalid.value, "%d", numbersym);
                     strcpy(tokenOfInvalid.lexeme, buffer);
@@ -939,8 +934,6 @@ int main(int argc, char *argv[])
                     {
                         token reserve;
 
-                        // printOutput("%10s %20d\n", buffer, token_value);
-
                         sprintf(reserve.value, "%d", token_value);
                         strcpy(reserve.lexeme, buffer);
 
@@ -959,10 +952,8 @@ int main(int argc, char *argv[])
                         {
                             // printOutput("%10s %20s\n", buffer, "ERROR: IDENTIFIER TOO LONG");
                         }
-
                         else
                         {
-                            // printOutput("%10s %20d\n", buffer, identsym);
                             sprintf(ident.value, "%d", identsym);
                             strcpy(ident.lexeme, buffer);
                             appendToken(token_list, ident);
@@ -1046,7 +1037,6 @@ int main(int argc, char *argv[])
                 else
                 {
                     // both valid symbols
-                    // printOutput("%10s %20d\n", buffer, token_value);
                     sprintf(doubleSpecial.value, "%d", token_value);
                     strcpy(doubleSpecial.lexeme, buffer);
                     appendToken(token_list, doubleSpecial);
@@ -1066,7 +1056,6 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    // printOutput("%10s %20d\n", buffer, token_value);
                     sprintf(singleSpecial.value, "%d", token_value);
                     strcpy(singleSpecial.lexeme, buffer);
                     appendToken(token_list, singleSpecial);
@@ -1078,21 +1067,21 @@ int main(int argc, char *argv[])
         }
     }
 
-    // First instruction is always JMP 0 3
+    // Setting first ins as 'JMP 0 3'
     code[0].op = 7;
     code[0].l = 0;
     code[0].m = 3;
-    cx++;
 
-    // Read in tokens in the tokens list and generate code
+    codex++;
+
     program();
-
     print_instructions();
     print_symbol_table();
 
+    // freeing token list and closing both files
     freeList(token_list);
-    fclose(inputFile);  // Close input file
-    fclose(outputFile); // Close output file
+    fclose(inputFile);
+    fclose(outputFile);
 
     return 0; // end of program
 } // end of MAIN METHOD
