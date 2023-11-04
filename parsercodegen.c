@@ -1028,10 +1028,11 @@ void print_symbol_table()
   print_both("%10s %10s %10s %10s %10s %10s\n", "kind", "name", "val", "level", "addr", "mark");
   for (int i = 0; i < tx; i++)
   {
+    symbol_table[i].mark = 1;
     if (symbol_table[i].kind == 1)
-      print_both("%10d %10s %10d %10s %10s %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, "-", "-", 1);
+      print_both("%10d %10s %10d %10s %10s %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, "-", "-", symbol_table[i].mark);
     else
-      print_both("%10d %10s %10d %10d %10d %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr, 1);
+      print_both("%10d %10s %10d %10d %10d %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr, symbol_table[i].mark);
   }
 }
 
