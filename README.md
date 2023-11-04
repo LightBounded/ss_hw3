@@ -1,5 +1,7 @@
 
 # Homework #3 (Tiny PL/0 Compiler)
+Authored By Caleb Rivera and Matthew Labrada
+
 
 This assignment implements a Recursive Descent Parser and Intermediate
 Code Generator for tiny PL/0. It is capable of getting tokens produced by the scanner we developed in HW2 and produces an output file that does one of two things:
