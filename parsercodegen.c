@@ -97,6 +97,40 @@ int cx = 0;                         // Code index
 int tx = 0;                         // Symbol table index
 int level = 0;                      // Current level
 
+// Function prototypes
+char peekc();
+void print_both(const char *format, ...);
+void print_source_code();
+void clear_to_index(char *str, int index);
+int handle_reserved_word(char *buffer);
+int handle_special_symbol(char *buffer);
+int is_special_symbol(char c);
+list *create_list();
+list *destroy_list(list *l);
+list *append_token(list *l, token t);
+void add_token(list *l, token t);
+void print_lexeme_table(list *l);
+void print_tokens(list *l);
+
+// Parser/Codegen function prototypes
+void get_next_token();
+void emit(int op, int l, int m);
+void error(int error_code);
+int check_symbol_table(char *string);
+void add_symbol(int kind, char *name, int val, int level, int addr);
+void program();
+void block();
+void const_declaration();
+int var_declaration();
+void statement();
+void condition();
+void expression();
+void term();
+void factor();
+void print_symbol_table();
+void print_instructions();
+void get_op_name(int op, char *name);
+
 // reads next character from input file
 char peekc()
 {
@@ -807,7 +841,6 @@ int main(int argc, char *argv[])
 
     char c;
     int buffer_index = 0;
-
     char buffer[TOKEN_LEN_MAX + 1] = {0};
 
     // loop through the input file and check for tokens until end of file (EOF)
@@ -836,12 +869,12 @@ int main(int argc, char *argv[])
                     if (buffer_index > NUM_LEN_MAX)
                     {
                         // given number is larger than max length
-                        printOutput("%10s %20s\n", buffer, "ERROR: NUMBER TOO LONG");
+                        // printOutput("%10s %20s\n", buffer, "ERROR: NUMBER TOO LONG");
                     }
                     else
                     {
                         // given number is VALID
-                        printOutput("%10s %20d\n", buffer, numbersym);
+                        // printOutput("%10s %20d\n", buffer, numbersym);
                         sprintf(t.value, "%d", numbersym);
                         strcpy(t.lexeme, buffer);
                         appendToken(token_list, t);
@@ -866,7 +899,7 @@ int main(int argc, char *argv[])
                     // next char is invalid number
                     token tokenOfInvalid;
 
-                    printOutput("%10s %20d\n", buffer, numbersym);
+                    // printOutput("%10s %20d\n", buffer, numbersym);
 
                     sprintf(tokenOfInvalid.value, "%d", numbersym);
                     strcpy(tokenOfInvalid.lexeme, buffer);
@@ -891,14 +924,19 @@ int main(int argc, char *argv[])
                 {
                     // handling for reserved words, checks first
                     int token_value = reservedToToken(buffer);
+
                     if (token_value)
                     {
                         token reserve;
-                        printOutput("%10s %20d\n", buffer, token_value);
+
+                        // printOutput("%10s %20d\n", buffer, token_value);
+
                         sprintf(reserve.value, "%d", token_value);
                         strcpy(reserve.lexeme, buffer);
+
                         appendToken(token_list, reserve);
                         cutString(buffer, buffer_index);
+
                         buffer_index = 0;
                         break;
                     }
@@ -909,12 +947,12 @@ int main(int argc, char *argv[])
 
                         if (buffer_index > ID_LEN_MAX) // Check if identifier is too long
                         {
-                            printOutput("%10s %20s\n", buffer, "ERROR: IDENTIFIER TOO LONG");
+                            // printOutput("%10s %20s\n", buffer, "ERROR: IDENTIFIER TOO LONG");
                         }
 
                         else
                         {
-                            printOutput("%10s %20d\n", buffer, identsym);
+                            // printOutput("%10s %20d\n", buffer, identsym);
                             sprintf(ident.value, "%d", identsym);
                             strcpy(ident.lexeme, buffer);
                             appendToken(token_list, ident);
