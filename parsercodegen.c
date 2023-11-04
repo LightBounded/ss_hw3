@@ -1044,7 +1044,7 @@ void print_instructions()
 {
 
   print_both("Assembly Code:\n");
-  print_both("%10s %10s %10s %10s\n", "line", "op", "l", "m");
+  print_both("%10s %10s %10s %10s\n", "Line", "OP", "L", "M");
   for (int i = 0; i < cx; i++)
   {
     char name[4];
