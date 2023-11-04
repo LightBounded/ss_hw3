@@ -99,7 +99,7 @@ int level = 0;                      // Current level
 
 // Function prototypes
 char peekc();
-void print_both(const char *format, ...);
+void printOutput(const char *format, ...);
 void print_source_code();
 void clear_to_index(char *str, int index);
 int handle_reserved_word(char *buffer);
@@ -211,7 +211,7 @@ int handle_reserved_word(char *buffer)
 }
 
 // checks if the given string matches any special symbo and return its token value
-// this is literally the same as the reservedToToken function but with different arrays
+// this is literally the same as the handle_reserved_word function but with different arrays
 int specialToToken(char *buffer)
 {
     char *special_symbols[] = {"+", "-", "*", "/", "(", ")", ",", ";", ".", "=", "<", ">", ":=", "<=", ">=", "<>"};
@@ -301,7 +301,7 @@ void add_token(list *l, token t)
 void print_lexeme_table(list *l)
 {
     for (int i = 0; i < l->size; i++)
-        print_both("%10s %20s\n", l->tokens[i].lexeme, l->tokens[i].value);
+        printOutput("%10s %20s\n", l->tokens[i].lexeme, l->tokens[i].value);
 }
 
 // prints all of the tokens in list to output and console
@@ -356,56 +356,56 @@ void emit(int op, int l, int m)
 // Print an error message and exit
 void error(int error_code)
 {
-    print_both("Error: ");
+    printOutput("Error: ");
     switch (error_code)
     {
     case 1:
-        print_both("program must end with a period\n");
+        printOutput("program must end with a period\n");
         break;
     case 2:
-        print_both("const, var, and read keywords must be followed by identifier\n");
+        printOutput("const, var, and read keywords must be followed by identifier\n");
         break;
     case 3:
-        print_both("symbol name has already been declared\n");
+        printOutput("symbol name has already been declared\n");
         break;
     case 4:
-        print_both("constants must be assigned with =\n");
+        printOutput("constants must be assigned with =\n");
         break;
     case 5:
-        print_both("constants must be assigned an integer value\n");
+        printOutput("constants must be assigned an integer value\n");
         break;
     case 6:
-        print_both("constant and variables declarations must be followed by a semicolon\n");
+        printOutput("constant and variables declarations must be followed by a semicolon\n");
         break;
     case 7:
-        print_both("undeclared identifier %s\n", current_token.lexeme);
+        printOutput("undeclared identifier %s\n", current_token.lexeme);
         break;
     case 8:
-        print_both("only variable values may be altered\n");
+        printOutput("only variable values may be altered\n");
         break;
     case 9:
-        print_both("assignment statements must use :=\n");
+        printOutput("assignment statements must use :=\n");
         break;
     case 10:
-        print_both("begin must be followed by end\n");
+        printOutput("begin must be followed by end\n");
         break;
     case 11:
-        print_both("if must be followed by then\n");
+        printOutput("if must be followed by then\n");
         break;
     case 12:
-        print_both("while must be followed by do\n");
+        printOutput("while must be followed by do\n");
         break;
     case 13:
-        print_both("condition must contain comparison operator\n");
+        printOutput("condition must contain comparison operator\n");
         break;
     case 14:
-        print_both("right parenthesis must follow left parenthesis\n");
+        printOutput("right parenthesis must follow left parenthesis\n");
         break;
     case 15:
-        print_both("arithmetic equations must contain operands, parenthesis, numbers, or symbols\n");
+        printOutput("arithmetic equations must contain operands, parenthesis, numbers, or symbols\n");
         break;
     case 16:
-        print_both("program too long\n");
+        printOutput("program too long\n");
     }
     exit(0);
 }
@@ -754,11 +754,11 @@ void factor()
 // Print symbol table
 void print_symbol_table()
 {
-    print_both("Symbol Table:\n");
-    print_both("%10s %10s %10s %10s %10s\n", "kind", "name", "val", "level", "addr");
+    printOutput("Symbol Table:\n");
+    printOutput("%10s %10s %10s %10s %10s\n", "kind", "name", "val", "level", "addr");
     for (int i = 0; i < tx; i++)
     {
-        print_both("%10d %10s %10d %10d %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr);
+        printOutput("%10d %10s %10d %10d %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr);
     }
 }
 
@@ -766,13 +766,13 @@ void print_symbol_table()
 void print_instructions()
 {
 
-    print_both("Assembly Code:\n");
-    print_both("%10s %10s %10s %10s\n", "line", "op", "l", "m");
+    printOutput("Assembly Code:\n");
+    printOutput("%10s %10s %10s %10s\n", "line", "op", "l", "m");
     for (int i = 0; i < cx; i++)
     {
         char name[4];
         get_op_name(code[i].op, name);
-        print_both("%10d %10s %10d %10d\n", i, name, code[i].l, code[i].m);
+        printOutput("%10d %10s %10d %10d\n", i, name, code[i].l, code[i].m);
     }
 }
 
@@ -816,7 +816,7 @@ int main(int argc, char *argv[])
 
     if (argc != 3)
     {
-        print_both("Usage: %s <input file> <output file>\n", argv[0]);
+        printOutput("Usage: %s <input file> <output file>\n", argv[0]);
         return 1;
     }
 
@@ -826,13 +826,13 @@ int main(int argc, char *argv[])
 
     if (inputFile == NULL)
     {
-        print_both("Error: Could not open input file %s\n", argv[1]);
+        printOutput("Error: Could not open input file %s\n", argv[1]);
         return 1;
     }
 
     if (outputFile == NULL)
     {
-        print_both("Error: Could not open output file %s\n", argv[2]);
+        printOutput("Error: Could not open output file %s\n", argv[2]);
         return 1;
     }
 
@@ -923,7 +923,7 @@ int main(int argc, char *argv[])
                 if (isspace(nextc) || specialSymbolCheck(nextc) || nextc == EOF)
                 {
                     // handling for reserved words, checks first
-                    int token_value = reservedToToken(buffer);
+                    int token_value = handle_reserved_word(buffer);
 
                     if (token_value)
                     {
@@ -1027,7 +1027,8 @@ int main(int argc, char *argv[])
                 token doubleSpecial;
                 int token_value = specialToToken(buffer);
 
-                if (!token_value) {
+                if (!token_value)
+                {
                     // given 2 symbols are invalid
                     // for (int i = 0; i < buffer_index; i++)
                     //     printOutput("%10c %20s\n", buffer[i], "ERROR: INVALID SYMBOL");
@@ -1050,10 +1051,12 @@ int main(int argc, char *argv[])
                 token singleSpecial;
                 int token_value = specialToToken(buffer);
                 if (!token_value)
-                    printOutput("%10c %20s\n", c, "ERROR: INVALID SYMBOL");
+                {
+                    // printOutput("%10c %20s\n", c, "ERROR: INVALID SYMBOL");
+                }
                 else
                 {
-                    printOutput("%10s %20d\n", buffer, token_value);
+                    // printOutput("%10s %20d\n", buffer, token_value);
                     sprintf(singleSpecial.value, "%d", token_value);
                     strcpy(singleSpecial.lexeme, buffer);
                     appendToken(token_list, singleSpecial);
